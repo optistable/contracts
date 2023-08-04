@@ -1,0 +1,13 @@
+# Secrets
+.secrets/
+
+# Dependency directories
+node_modules/
+
+.env*
+!.env.example
+dist
+
+.parcel-cache/
+
+yarn-error.log

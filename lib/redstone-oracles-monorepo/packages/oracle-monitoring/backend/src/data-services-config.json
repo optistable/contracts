@@ -1,0 +1,56 @@
+[
+  {
+    "id": "redstone",
+    "checkWithoutSymbol": true,
+    "symbolsToCheck": ["ETH", "STX"],
+    "checkEachSingleUrl": false,
+    "minTimestampDiffForWarning": 120000,
+    "schedule": "0 * * * *",
+    "urls": []
+  },
+  {
+    "id": "redstone-stocks",
+    "checkWithoutSymbol": true,
+    "symbolsToCheck": ["AAPL"],
+    "checkEachSingleUrl": true,
+    "minTimestampDiffForWarning": 120000,
+    "schedule": "5 * * * *",
+    "urls": []
+  },
+  {
+    "id": "redstone-rapid",
+    "checkWithoutSymbol": true,
+    "symbolsToCheck": ["ETH"],
+    "checkEachSingleUrl": true,
+    "minTimestampDiffForWarning": 20000,
+    "schedule": "*/10 * * * *",
+    "urls": []
+  },
+  {
+    "id": "redstone-avalanche",
+    "checkWithoutSymbol": true,
+    "checkEachSingleUrl": true,
+    "symbolsToCheck": ["AVAX"],
+    "minTimestampDiffForWarning": 20000,
+    "schedule": "15 * * * *",
+    "urls": []
+  },
+  {
+    "id": "redstone-custom-urls-demo",
+    "checkWithoutSymbol": true,
+    "symbolsToCheck": [],
+    "checkEachSingleUrl": true,
+    "minTimestampDiffForWarning": 120000,
+    "schedule": "20 * * * *",
+    "urls": []
+  },
+  {
+    "id": "redstone-avalanche-prod",
+    "checkWithoutSymbol": true,
+    "symbolsToCheck": ["AVAX", "QI", "YAK"],
+    "checkEachSingleUrl": true,
+    "minTimestampDiffForWarning": 20000,
+    "schedule": "*/10 * * * * *",
+    "urls": []
+  }
+]

@@ -1,0 +1,31 @@
+# Dependency directories
+node_modules/
+
+# IDE configs
+.idea
+
+# Custom files and folders
+.experiments
+.secrets*
+tmp.out
+
+.DS_Store
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
+
+lib
+
+dist
+
+yarn-error.log
+.clinic/
+
+# Private dockerfiles
+Dockerfile.redstone-dev
+
+.env*
+
+tmp.patch

@@ -28,6 +28,7 @@ contract ChainlinkPriceFeedDataProvider is IDataProvider, Ownable {
     }
 
     function recordPrice(uint256 _blocknum, uint256 _price) external {
+        require(msg.sender == systemAddress, "only the system address can ");
         history[_blocknum] = _price;
         lastObservation = _price;
         lastBlockNum = _blocknum; //TODO This must come from L1
@@ -47,6 +48,10 @@ contract ChainlinkPriceFeedDataProvider is IDataProvider, Ownable {
 
     function setSystemAddress(address _newSystemAddress) external onlyOwner {
         systemAddress = _newSystemAddress;
+    }
+
+    function getSystemAddress() external view returns (address) {
+        return systemAddress;
     }
 
     function getFeedAddress() external view returns (address) {

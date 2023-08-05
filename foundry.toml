@@ -2,5 +2,9 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+optimizer = true
+optimizer_runs = 20_000
+eth_rpc_url = "${L2_RPC}"
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
+

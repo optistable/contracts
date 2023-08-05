@@ -13,6 +13,11 @@ Foundry consists of:
 
 https://book.getfoundry.sh/
 
+```shell
+$ curl -L https://foundry.paradigm.xyz | bash
+$ foundryup
+```
+
 ## Usage
 
 ### Build

@@ -4,6 +4,3 @@
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/openzeppelin/openzeppelin-contracts
-[submodule "lib/redstone-oracles-monorepo"]
-	path = lib/redstone-oracles-monorepo
-	url = https://github.com/redstone-finance/redstone-oracles-monorepo

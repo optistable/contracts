@@ -6,15 +6,16 @@ import "./IDataProvider.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract RedstoneDataProvider is MainDemoConsumerBase, IDataProvider, Ownable {
-
     mapping(address => bytes32) public addressToBytes32;
 
-
-    function addAddressMapping(address _addr , bytes32 _translateTo ) external onlyOwner {
+    function addAddressMapping(
+        address _addr,
+        bytes32 _translateTo
+    ) external onlyOwner {
         addressToBytes32[_addr] = _translateTo;
     }
 
-    function getCurrentPrices(
+    function getCurrentPrice(
         address _srcAddress,
         address _targetAddress
     ) external payable override returns (uint256, uint256) {

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 import {IStablecoinInsurancePolicy} from "./IStablecoinInsurancePolicy.sol";
 import {IDataProvider} from "./IDataProvider.sol";
-import "forge-std/Console.sol";
+import "forge-std/console.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/lib/erc4626-tests/ERC4626.prop.sol";
 

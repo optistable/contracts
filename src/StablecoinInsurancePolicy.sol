@@ -4,7 +4,6 @@ import {IStablecoinInsurancePolicy} from "./IStablecoinInsurancePolicy.sol";
 import {IDataProvider} from "./IDataProvider.sol";
 import "forge-std/console.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "openzeppelin-contracts/lib/erc4626-tests/ERC4626.prop.sol";
 
 contract StablecoinInsurancePolicy is IStablecoinInsurancePolicy {
     enum PolicyState {
@@ -24,13 +23,12 @@ contract StablecoinInsurancePolicy is IStablecoinInsurancePolicy {
     uint256 policyTermInSeconds;
 
     // Start balances at 0 so we can deploy -> approve -> transfer
-    uint256 insuredBalance = 0; 
+    uint256 insuredBalance = 0;
     uint256 collateralBalance = 0;
     uint256 lockedPremiumBalance = 0; // Trickles into unlocked premium balance whenever depeg is checked
     uint256 unlockedPremiumBalance = 0; // Can be withdrawn on demand by the insurer
     uint256 requiredPremium;
 
-    
     uint256 depegTermInSeconds;
     uint256 timeDepegged; // When depeg is detected, incremented until depegTerm is hit. Reset to 0 if the policy is no longer depegged
     uint256 lastBlockChecked; //block number is more reliable than block timestamp???
@@ -38,7 +36,6 @@ contract StablecoinInsurancePolicy is IStablecoinInsurancePolicy {
     PolicyState status;
     uint256 startDate;
     IDataProvider dataProvider; // used to get the price of the insured token
-
 
     modifier onlyInsured() {
         require(
@@ -61,8 +58,8 @@ contract StablecoinInsurancePolicy is IStablecoinInsurancePolicy {
     modifier mustBeActive() {
         require(
             status != PolicyState.AwaitingInsurer &&
-            status != PolicyState.Cancelled && 
-            status != PolicyState.Executed,
+                status != PolicyState.Cancelled &&
+                status != PolicyState.Executed,
             string.concat("Policy must be in an active state")
         );
         _;
@@ -82,14 +79,19 @@ contract StablecoinInsurancePolicy is IStablecoinInsurancePolicy {
     ) payable {
         // require(_insured != _insurer, "Insured and insurer must be different"); // Also captures if both _insured and _insurer are empty
         require(_insuredToken != address(0), "Insured token must be specified");
-        require(_insurerToken != address(0), "Collateral token must be specified");
+        require(
+            _insurerToken != address(0),
+            "Collateral token must be specified"
+        );
         require(_premiumToken != address(0), "Premium token must be specified");
-        require(_insuredToken != _insurerToken, "Insured token and collateral token must be different");
+        require(
+            _insuredToken != _insurerToken,
+            "Insured token and collateral token must be different"
+        );
         require(_insuredAmount > 0, "Insured amount must be greater than 0");
         require(_premiumAmount > 0, "Premium must be greater than 0");
         require(_dataProvider != address(0), "Data provider must be specified");
-        
-  
+
         insured = _insured;
         insuredToken = IERC20(_insuredToken);
         collateralToken = IERC20(_insurerToken);
@@ -102,7 +104,6 @@ contract StablecoinInsurancePolicy is IStablecoinInsurancePolicy {
         startDate = block.timestamp;
         status = PolicyState.Active;
         managementContract = _managementContract;
-
     }
 
     function setDataProvider(address _newDataProvider) external {
@@ -114,37 +115,66 @@ contract StablecoinInsurancePolicy is IStablecoinInsurancePolicy {
     function insuredDeposit() external payable onlyInsured {
         uint256 requiredDeposit = insuredAmount + requiredPremium;
         // TODO, this won't be done w/ native tokens
-        require(insuredToken.allowance(msg.sender, address(this)) >= requiredDeposit, "Insured must approve the policy to transfer the required amount");
         require(
-          insuredToken.balanceOf(msg.sender) >= requiredDeposit,
+            insuredToken.allowance(msg.sender, address(this)) >=
+                requiredDeposit,
+            "Insured must approve the policy to transfer the required amount"
+        );
+        require(
+            insuredToken.balanceOf(msg.sender) >= requiredDeposit,
             "Insured must deposit the required amount"
         );
-        require(insuredToken.transferFrom(msg.sender, address(this), requiredDeposit), "Insured must transfer the required amount");
+        require(
+            insuredToken.transferFrom(
+                msg.sender,
+                address(this),
+                requiredDeposit
+            ),
+            "Insured must transfer the required amount"
+        );
         insuredBalance += requiredDeposit;
     }
-    
+
     function insurerDeposit() external payable onlyInsurer {
         // TODO, this won't be done w/ native tokens
-        require(insuredToken.allowance(msg.sender, address(this)) >= insuredAmount, "Insured must approve the policy to transfer the required amount");
         require(
-          insuredToken.balanceOf(msg.sender) >= insuredAmount,
+            insuredToken.allowance(msg.sender, address(this)) >= insuredAmount,
+            "Insured must approve the policy to transfer the required amount"
+        );
+        require(
+            insuredToken.balanceOf(msg.sender) >= insuredAmount,
             "Insured must deposit the required amount"
         );
-        require(insuredToken.transferFrom(msg.sender, address(this), insuredAmount), "Insured must transfer the required amount");
+        require(
+            insuredToken.transferFrom(msg.sender, address(this), insuredAmount),
+            "Insured must transfer the required amount"
+        );
         collateralBalance += msg.value;
     }
 
     function activatePolicy() external onlyInsurer {
-        require(status == PolicyState.AwaitingInsurer, "Policy must be awaiting insurer");
-        require(insuredBalance >= insuredAmount, "Insured must deposit the required amount");
-        require(lockedPremiumBalance >= requiredPremium, "Insured must deposit the premium");
-        require(collateralBalance >= insuredAmount, "Insurer must deposit the required amount");
+        require(
+            status == PolicyState.AwaitingInsurer,
+            "Policy must be awaiting insurer"
+        );
+        require(
+            insuredBalance >= insuredAmount,
+            "Insured must deposit the required amount"
+        );
+        require(
+            lockedPremiumBalance >= requiredPremium,
+            "Insured must deposit the premium"
+        );
+        require(
+            collateralBalance >= insuredAmount,
+            "Insurer must deposit the required amount"
+        );
         status = PolicyState.Active;
     }
 
     function isDepegged() external view returns (bool) {
         // (uint insuredPrice, uint collateralPrice) = dataProvider
-            // .getCurrentPrices(address(insuredToken), address(collateralToken)); 
+        // .getCurrentPrices(address(insuredToken), address(collateralToken));
         // // Check if insured token has deviated from collateral token by some percentage
         // Or since these are stablecoins, should it be that it has deviated from 1?
         return false;
@@ -156,7 +186,7 @@ contract StablecoinInsurancePolicy is IStablecoinInsurancePolicy {
                 timeDepegged +=
                     (block.number - lastBlockChecked) *
                     averageBlockTimeInSeconds;
-                    console.log("timeDepegged: ", timeDepegged);
+                console.log("timeDepegged: ", timeDepegged);
                 if (timeDepegged >= depegTermInSeconds) {
                     console.log("Claim terms met");
                     executeClaim();
@@ -174,10 +204,32 @@ contract StablecoinInsurancePolicy is IStablecoinInsurancePolicy {
     // If the depeg has
     //TODO Add reentracy protection
     function executeClaim() private mustBeActive {
-        require(insuredToken.transferFrom(address(this), insure), "failed to transfer insured token to insurer");
-        require(premiumToken.transferFrom(address(this), insured, lockedPremiumBalance));
-        require(collateralToken.transferFrom(address(this), insured, collateralBalance + unlockedPremiumBalance), "failed to transfer collateral token to insured");
-        require(premiumToken.transferFrom(address(this), insured, unlockedPremiumBalance));
+        require(
+            insuredToken.transferFrom(address(this), insurer, insuredAmount),
+            "failed to transfer insured token to insurer"
+        );
+        require(
+            premiumToken.transferFrom(
+                address(this),
+                insured,
+                lockedPremiumBalance
+            )
+        );
+        require(
+            collateralToken.transferFrom(
+                address(this),
+                insured,
+                collateralBalance + unlockedPremiumBalance
+            ),
+            "failed to transfer collateral token to insured"
+        );
+        require(
+            premiumToken.transferFrom(
+                address(this),
+                insured,
+                unlockedPremiumBalance
+            )
+        );
         insuredBalance = 0;
         collateralBalance = 0;
         lockedPremiumBalance = 0;
@@ -200,10 +252,8 @@ contract StablecoinInsurancePolicy is IStablecoinInsurancePolicy {
         status = PolicyState.Cancelled;
     }
 
-
     //TODO Add reentracy protection
     function withdrawPremium() external mustBeActive onlyInsurer {
         //send unlockedPremiumBalance to insurer
     }
-
-} 
+}

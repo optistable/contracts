@@ -1,0 +1,11 @@
+{
+    "solidity.compileUsingRemoteVersion": "v0.8.21+commit.d9974bed",
+    "editor.rulers": [120],
+    "editor.formatOnSave": true,
+    "solidity.packageDefaultDependenciesContractsDirectory": "src",
+    "solidity.packageDefaultDependenciesDirectory": "lib",
+    "[solidity]": {
+        "editor.defaultFormatter": "JuanBlanco.solidity"
+    },
+    "solidity.formatter": "forge"
+}

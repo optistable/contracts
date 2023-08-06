@@ -7,3 +7,6 @@
 [submodule "lib/redstone-oracles-monorepo"]
 	path = lib/redstone-oracles-monorepo
 	url = https://github.com/redstone-finance/redstone-oracles-monorepo
+[submodule "lib/solmate"]
+	path = lib/solmate
+	url = https://github.com/transmissions11/solmate

@@ -3,46 +3,80 @@ pragma solidity =0.8.21;
 
 import {IDataProvider} from "./IDataProvider.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
+import {AggregatorV3Interface} from "@chainlink/v0.8/interfaces/AggregatorV3Interface.sol";
+import {OracleCommittee} from "./OracleCommittee.sol";
+
+import "forge-std/console.sol";
 
 contract ChainlinkPriceFeedDataProvider is IDataProvider, Ownable {
     bytes32 public symbol;
     uint256 public lastBlockNum;
-    uint256 public lastObservation;
-    address public feedAddress;
+    uint256 public endingBlock;
+    uint256 public depegTolerance;
+    AggregatorV3Interface public l1Feed;
     address public systemAddress;
+    uint8 public minBlocksToSwitchStatus;
+    // resets as a token fluctuates between stable and depegged,
+    uint8 public switchStatusCounter;
+    uint8 private decimals;
+    bool public depegged = false;
+    uint256 stableValue; //Will be 1a ** decimals, see comment in recordPrice.
+    uint256 public lastObservation;
+    bool private lastObservationDepegged = false;
+    OracleCommittee committee;
 
-    mapping(uint256 => uint256) public history;
-
-    constructor(address _feed, bytes32 _symbol) {
-        feedAddress = _feed;
+    constructor(
+        address _feed,
+        address _systemAddress, // The address authorized to record prices
+        address _committeeAddress, // The address where central config comes from
+        bytes32 _symbol,
+        uint256 _depegTolerance,
+        uint8 _minBlocksToSwitchStatus,
+        uint8 _decimals
+    ) {
+        l1Feed = AggregatorV3Interface(_feed);
         symbol = _symbol;
+        minBlocksToSwitchStatus = _minBlocksToSwitchStatus;
+        systemAddress = _systemAddress;
+        decimals = _decimals;
+        stableValue = 10 ** _decimals;
+        depegTolerance = _depegTolerance;
+        committee = OracleCommittee(_committeeAddress);
     }
 
-    function recordPrice(uint256 _blocknum, uint256 _price) external {
-        require(msg.sender == systemAddress, "only the system address can ");
-        history[_blocknum] = _price;
+    function recordPrice(uint256 _l1BlockNum, uint256 _price) external virtual {
+        require(!depegged, "this data provider has concluded, marking this stablecoin as depegged");
+        require(_l1BlockNum <= endingBlock, "this data provider has finished recording prices");
+        require(_l1BlockNum >= lastBlockNum, "have already recorded price for this block");
+        require(msg.sender == systemAddress, "only the system address can record a price");
+
+        // console.log("recording price of ", _price, " at blocknum ", _l1BlockNum);
+
+        bool currentlyDepegged = stableValue - _price >= depegTolerance;
+        if (currentlyDepegged) {
+            //Token is depegged
+            switchStatusCounter++;
+        } else {
+            //Token is not depegged
+            switchStatusCounter = 0; //Reset counter
+        }
+
+        if (switchStatusCounter >= minBlocksToSwitchStatus) {
+            depegged = true;
+            // This data provider will count as one of many sources of truth that this stablecoin is depegged
+            committee.recordProviderAsDepegged();
+        }
+        lastBlockNum = _l1BlockNum;
         lastObservation = _price;
-        lastBlockNum = _blocknum; //TODO This must come from L1
+        lastObservationDepegged = currentlyDepegged;
     }
 
-    function setSymbol(bytes32 _newSymbol) external onlyOwner {
-        symbol = _newSymbol;
+    function getLastPrice() external view returns (uint256) {
+        return lastObservation;
     }
 
-    function setFeedAddress(address _newFeedAddress) external onlyOwner {
-        feedAddress = _newFeedAddress;
-    }
-
-    function setSystemAddress(address _newSystemAddress) external onlyOwner {
-        systemAddress = _newSystemAddress;
-    }
-
-    function getCurrentPrice() external view returns (uint256, uint256) {
-        return (lastBlockNum, lastObservation);
-    }
-
-    function getPriceAtBlockNum(uint256 _blocknum) external view returns (uint256) {
-        return history[_blocknum];
+    function getLastObservedBlock() external view returns (uint256) {
+        return lastBlockNum;
     }
 
     function getSymbol() external view returns (bytes32) {
@@ -53,7 +87,32 @@ contract ChainlinkPriceFeedDataProvider is IDataProvider, Ownable {
         return systemAddress;
     }
 
+    function getL1Feed() external view returns (AggregatorV3Interface) {
+        return l1Feed;
+    }
+
     function getFeedAddress() external view returns (address) {
-        return feedAddress;
+        return address(l1Feed);
+    }
+
+    function isDepegged() external view returns (bool) {
+        return depegged;
+    }
+
+    function getPriceAtBlockNum(uint256 _blocknum) external view virtual returns (uint256) {
+        require(false, "you can't view price history when minimizeGas is true");
+        return 0; //Can never be reached
+    }
+
+    function getEndingBlock() external view returns (uint256) {
+        return endingBlock;
+    }
+
+    function isGasMinimized() external view virtual returns (bool) {
+        return true;
+    }
+
+    function isOnChain() external view returns (bool) {
+        return true;
     }
 }

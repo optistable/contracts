@@ -206,4 +206,14 @@ contract Policy is Ownable {
     }
 
     // function endPolicy(uint256 _policyId) public onlySystemAddress {}
+
+    function withdraw() public {
+        require(committee.isClosed(), "you cannot withdraw from a policy that is still open");
+
+        if (committee.isDepegged()) {
+            //Do something
+        } else {
+            //Do something
+        }
+    }
 }

@@ -26,6 +26,8 @@ contract OracleCommittee is Ownable {
 
     mapping(address => ProviderStatus) depeggedProviders;
 
+    address[] providers; // Used to return a list of providers to the OP Stack hack
+
     modifier onlyPolicy() {
         require(msg.sender == address(policy));
         _;
@@ -55,6 +57,7 @@ contract OracleCommittee is Ownable {
                 "You can't use the same data provider twice"
             );
             depeggedProviders[_providers[i]] = ProviderStatus.RegisteredButNotDepegged;
+            providers.push(_providers[i]);
         }
     }
 
@@ -73,5 +76,9 @@ contract OracleCommittee is Ownable {
 
     function isClosed() external view returns (bool) {
         return this.isDepegged() || block.number > endingBlock;
+    }
+
+    function getProviders() external view returns (address[] memory) {
+        return providers;
     }
 }

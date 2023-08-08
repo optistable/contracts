@@ -23,12 +23,12 @@ contract ChainlinkPriceFeedDataProvider is IDataProvider, Ownable {
     uint256 stableValue; //Will be 1a ** decimals, see comment in recordPrice.
     uint256 public lastObservation;
     bool private lastObservationDepegged = false;
+    bytes32 oracleType = bytes32("chainlink-data-feed");
     OracleCommittee committee;
 
     constructor(
         address _feed,
         address _systemAddress, // The address authorized to record prices
-        address _committeeAddress, // The address where central config comes from
         bytes32 _symbol,
         uint256 _depegTolerance,
         uint8 _minBlocksToSwitchStatus,
@@ -41,10 +41,10 @@ contract ChainlinkPriceFeedDataProvider is IDataProvider, Ownable {
         decimals = _decimals;
         stableValue = 10 ** _decimals;
         depegTolerance = _depegTolerance;
-        committee = OracleCommittee(_committeeAddress);
     }
 
     function recordPrice(uint256 _l1BlockNum, uint256 _price) external virtual {
+        require(address(committee) != address(0), "this data provider has not been assigned to a committee");
         require(!depegged, "this data provider has concluded, marking this stablecoin as depegged");
         require(_l1BlockNum <= endingBlock, "this data provider has finished recording prices");
         require(_l1BlockNum >= lastBlockNum, "have already recorded price for this block");
@@ -114,5 +114,15 @@ contract ChainlinkPriceFeedDataProvider is IDataProvider, Ownable {
 
     function isOnChain() external view returns (bool) {
         return true;
+    }
+
+    function getType() external view returns (bytes32) {
+        return oracleType;
+    }
+
+    function setOracleCommittee(address _oracleCommitteeAddr) external {
+        require(msg.sender == systemAddress, "only the system address can change the oracle");
+        require(address(committee) == address(0), "the committee has already been set, can no longer be changed");
+        committee = OracleCommittee(_oracleCommitteeAddr);
     }
 }

@@ -8,15 +8,13 @@ import {ChainlinkPriceFeedDataProvider} from "./ChainlinkPriceFeedDataProvider.s
 import "forge-std/console.sol";
 
 contract ChainlinkPriceFeedDataProviderDebug is ChainlinkPriceFeedDataProvider {
-
     // We deploy new DataProviders when we create a policy, so the history shouldn't get out of control
     mapping(uint256 => uint256) priceAtBlock;
-
 
     constructor(
         address _feed,
         address _systemAddress, // The address authorized to record prices
-        address _committeeAddress, // The address where central config comes from
+        // address _committeeAddress, // The address where central config comes from
         bytes32 _symbol,
         uint256 _depegTolerance,
         uint8 _minBlocksToSwitchStatus,
@@ -25,7 +23,6 @@ contract ChainlinkPriceFeedDataProviderDebug is ChainlinkPriceFeedDataProvider {
         ChainlinkPriceFeedDataProvider(
             _feed,
             _systemAddress,
-            _committeeAddress,
             _symbol,
             _depegTolerance,
             _minBlocksToSwitchStatus,

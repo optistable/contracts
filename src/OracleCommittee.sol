@@ -4,7 +4,8 @@ pragma solidity =0.8.21;
 import {IDataProvider} from "./IDataProvider.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {AggregatorV3Interface} from "@chainlink/v0.8/interfaces/AggregatorV3Interface.sol";
-import {Policy} from "./Policy.sol"; //TODO get an interfact
+import {Policy} from "./Policy.sol"; //TODO get an interface
+import {GenericDataProvider} from "./GenericDataProvider.sol";
 import "forge-std/console.sol";
 
 // OracleCommittee sets up a series of data providers.
@@ -25,7 +26,6 @@ contract OracleCommittee is Ownable {
     }
 
     mapping(address => ProviderStatus) depeggedProviders;
-
     address[] providers; // Used to return a list of providers to the OP Stack hack
 
     modifier onlyPolicy() {
@@ -68,6 +68,14 @@ contract OracleCommittee is Ownable {
         );
         depeggedProviders[msg.sender] = ProviderStatus.RegisteredAndDepegged;
         providersReportingDepeg++;
+    }
+
+    function getStartingBlock() public view returns (uint256) {
+        return startingBlock;
+    }
+
+    function getEndingBlock() public view returns (uint256) {
+        return endingBlock;
     }
 
     function isDepegged() external view returns (bool) {

@@ -20,7 +20,7 @@ contract PolicyTest is Test {
 
     function setUp() public {
         vm.prank(owner);
-        policy = new Policy();
+        policy = new Policy(0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001);
         setUpStablecoins();
     }
 
@@ -74,7 +74,6 @@ contract PolicyTest is Test {
     function test_CreatePolicy() public {
         assertEq(policy.policyCounter(), 0);
         vm.prank(owner);
-<<<<<<< HEAD
         vm.expectEmit(true, true, true, true);
         emit PolicyCreated(0, block.number, stableInsured, stableInsurer);
         policy.createPolicy(block.number, stableInsured, stableInsurer, 5);

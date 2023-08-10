@@ -11,6 +11,7 @@ import "src/PolicyWrapper.sol";
 contract Policy is Ownable {
     using Strings for uint256;
 
+    address public systemAddress;
     uint256 public policyCounter = 0;
     // TODO: frh -> be able how to change this variables and solve solhint-disable with another contract but not
     // 100% necesary
@@ -51,8 +52,12 @@ contract Policy is Ownable {
     );
 
     modifier onlySystemAddress() {
-        require(msg.sender == 0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001, "Only system address");
+        require(msg.sender == systemAddress, "Only system address");
         _;
+    }
+
+    constructor(address _systemAddress) {
+        systemAddress = _systemAddress;
     }
 
     function createPolicy(
@@ -207,13 +212,13 @@ contract Policy is Ownable {
 
     // function endPolicy(uint256 _policyId) public onlySystemAddress {}
 
-    function withdraw() public {
-        require(committee.isClosed(), "you cannot withdraw from a policy that is still open");
+    // function withdraw() public {
+    //     require(committee.isClosed(), "you cannot withdraw from a policy that is still open");
 
-        if (committee.isDepegged()) {
-            //Do something
-        } else {
-            //Do something
-        }
-    }
+    //     if (committee.isDepegged()) {
+    //         //Do something
+    //     } else {
+    //         //Do something
+    //     }
+    // }
 }

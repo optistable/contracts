@@ -45,6 +45,7 @@ contract GenericDataProvider is IDataProvider, Ownable {
         onChain = _isOnchain;
         committee = OracleCommittee(_committeeAddress);
     }
+    
 
     function recordPrice(uint256 _l1BlockNum, uint256 _price) external virtual {
         require(address(committee) != address(0), "this data provider has not been assigned to a committee");

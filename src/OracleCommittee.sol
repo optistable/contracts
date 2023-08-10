@@ -11,11 +11,13 @@ import "forge-std/console.sol";
 // OracleCommittee sets up a series of data providers.
 // When a majority of data providers report themselves as depegged, then it will report the policy as claimable
 contract OracleCommittee is Ownable {
-    uint256 startingBlock;
-    uint256 endingBlock;
-    uint8 minProvidersForQuorum;
-    uint8 providersReportingDepeg;
-    address systemAddress;
+    uint256 public startingBlock;
+    uint256 public endingBlock;
+    uint256 public minProvidersForQuorum;
+    uint8 public providersReportingDepeg;
+    address public systemAddress;
+    address public l1TokenAddress;
+    bytes32 public symbol;
     //DataProvider => depegged
 
     Policy policy;
@@ -36,39 +38,43 @@ contract OracleCommittee is Ownable {
 
     constructor(
         address _policy,
-        uint8 _minProvidersForQuorum,
+        bytes32 _symbol,
+        address _l1TokenAddress,
         uint256 _startingBlock,
-        uint256 _endingBlock,
-        address[] memory _providers
+        uint256 _endingBlock
     ) {
         require(_policy != address(0), "Policy must be specified");
-        require(
-            _minProvidersForQuorum <= _providers.length, "Quorum must require less than the total number of providers"
-        );
-        require(_providers.length >= 1, "You must specify one or more data providers for the committee");
+
+        // require(_providers.length >= 1, "You must specify one or more data providers for the committee");
         policy = Policy(_policy);
-        minProvidersForQuorum = _minProvidersForQuorum;
+        symbol = _symbol;
+        l1TokenAddress = _l1TokenAddress;
+        systemAddress = policy.systemAddress();
         startingBlock = _startingBlock;
         endingBlock = _endingBlock;
-        // systemAddress = Policy(_policy).systemAddress();
         // Load providers into mapping
-        for (uint256 i = 0; i < _providers.length; i++) {
-            require(
-                depeggedProviders[_providers[i]] == ProviderStatus.NotRegistered,
-                "You can't use the same data provider twice"
-            );
-            depeggedProviders[_providers[i]] = ProviderStatus.RegisteredButNotDepegged;
-            providers.push(_providers[i]);
-        }
+        // for (uint256 i = 0; i < _providers.length; i++) {
+        //     require(
+        //         depeggedProviders[_providers[i]] == ProviderStatus.NotRegistered,
+        //         "You can't use the same data provider twice"
+        //     );
+        //     depeggedProviders[_providers[i]] = ProviderStatus.RegisteredButNotDepegged;
+        //     providers.push(_providers[i]);
+        // }
     }
 
     function recordProviderAsDepegged() external {
+        // require(len(providers) > 0, "No providers registered");
+        //TODO @avichal, can we get the L1 block here?
+        require(block.number >= startingBlock, "Committee has not started yet");
         require(
             depeggedProviders[msg.sender] != ProviderStatus.RegisteredButNotDepegged,
-            "provider is either not regitered or already depegged"
+            "provider is either not registered or already depegged"
         );
         depeggedProviders[msg.sender] = ProviderStatus.RegisteredAndDepegged;
         providersReportingDepeg++;
+        //Is the majority of providers depegged?
+        // policy.endPolicy();
     }
 
     function getStartingBlock() public view returns (uint256) {
@@ -80,6 +86,10 @@ contract OracleCommittee is Ownable {
     }
 
     function isDepegged() external view returns (bool) {
+        if (startingBlock <= block.number) {
+            console.log("starting block is less than block number, committee hasn't started");
+            return false;
+        } //TODO, this should be L1 blocknum
         return providersReportingDepeg >= minProvidersForQuorum;
     }
 
@@ -91,12 +101,47 @@ contract OracleCommittee is Ownable {
         return providers;
     }
 
-    function addProvider(address _provider) external {
-        require(startingBlock > block.number, "Committee has already started"); // TODO Is the starting block L1 or L2?
+    function addExistingProvider(address _provider) external {
+        require(startingBlock <= block.number, "Committee has already started"); // TODO Is the starting block L1 or L2?
+        require(!this.isClosed(), "Committee is closed");
+        require(msg.sender == systemAddress, "Only the system can add providers");
         require(depeggedProviders[_provider] == ProviderStatus.NotRegistered, "Provider already registered");
         IDataProvider iProvider = IDataProvider(_provider);
         require(iProvider.getOracleCommittee() == address(0), "provider already registered with another committee");
         depeggedProviders[_provider] = ProviderStatus.RegisteredButNotDepegged;
         providers.push(_provider);
+    }
+
+    // Shortcut, makes it easier
+    function addNewProvider(
+        bytes32 _oracleType,
+        uint256 _depegTolerance,
+        uint8 _minBlocksToSwitchStatus,
+        uint8 _decimals,
+        bool _isOnChain
+    ) external returns (address) {
+        require(startingBlock <= block.number, "Committee has already started"); // TODO Is the starting block L1 or L2?
+        require(!this.isClosed(), "Committee is closed");
+        // require(depeggedProviders[msg.sender] == ProviderStatus.NotRegistered, "Provider already registered");
+        require(msg.sender == systemAddress, "Only the system can add providers");
+
+        console.log("Creating new provider...");
+        address newProvider = address(
+            new GenericDataProvider(
+            _oracleType,
+            systemAddress, 
+            address(this),
+            symbol,
+            _depegTolerance,
+            _minBlocksToSwitchStatus,
+            _decimals,
+            _isOnChain
+            )
+        );
+        depeggedProviders[newProvider] = ProviderStatus.RegisteredButNotDepegged;
+        providers.push(newProvider);
+        minProvidersForQuorum = (providers.length / 2) + (providers.length % 2);
+ 
+        return newProvider;
     }
 }

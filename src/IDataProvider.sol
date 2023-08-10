@@ -20,4 +20,6 @@ interface IDataProvider {
     // Valid values are determined by the derivation layer of the rollup in our OP Stack hack
     // Currently expected is: "chainlink-data-feed" "chainlink-ccip" "redstone" and "coingecko"
     function getType() external view returns (bytes32);
+
+    function getOracleCommittee() external view returns (address);
 }

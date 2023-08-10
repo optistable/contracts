@@ -15,6 +15,7 @@ contract OracleCommittee is Ownable {
     uint256 endingBlock;
     uint8 minProvidersForQuorum;
     uint8 providersReportingDepeg;
+    address systemAddress;
     //DataProvider => depegged
 
     Policy policy;
@@ -49,7 +50,7 @@ contract OracleCommittee is Ownable {
         minProvidersForQuorum = _minProvidersForQuorum;
         startingBlock = _startingBlock;
         endingBlock = _endingBlock;
-
+        // systemAddress = Policy(_policy).systemAddress();
         // Load providers into mapping
         for (uint256 i = 0; i < _providers.length; i++) {
             require(
@@ -88,5 +89,14 @@ contract OracleCommittee is Ownable {
 
     function getProviders() external view returns (address[] memory) {
         return providers;
+    }
+
+    function addProvider(address _provider) external {
+        require(startingBlock > block.number, "Committee has already started"); // TODO Is the starting block L1 or L2?
+        require(depeggedProviders[_provider] == ProviderStatus.NotRegistered, "Provider already registered");
+        IDataProvider iProvider = IDataProvider(_provider);
+        require(iProvider.getOracleCommittee() == address(0), "provider already registered with another committee");
+        depeggedProviders[_provider] = ProviderStatus.RegisteredButNotDepegged;
+        providers.push(_provider);
     }
 }

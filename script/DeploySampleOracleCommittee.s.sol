@@ -66,7 +66,7 @@ contract Deploy is Script {
         address(policy),
         1, //_minProvidersForQuorum,
         block.number, //_startingBlock,
-        block.number + 20, //_endingBlock,
+        block.number + 1001, //_endingBlock,
         providers
     );
         chainlinkFeed.setOracleCommittee(address(committee));

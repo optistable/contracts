@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+// SPDX-License-Identifier: MIT
+pragma solidity =0.8.21;
 
-import "@redstone-finance/evm-connector/dist/contracts/data-services/MainDemoConsumerBase.sol";
 import "./IDataProviderAlt.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
+
 contract MockDataProvider is IDataProviderAlt, Ownable {
     mapping(bytes32 => uint256) public priceMap;
 
@@ -11,10 +11,12 @@ contract MockDataProvider is IDataProviderAlt, Ownable {
         priceMap[_addr] = _price;
     }
 
-    function getCurrentPrices(
-        bytes32 _srcAddress,
-        bytes32 _targetAddress
-    ) external override returns (uint256, uint256) {
+    function getCurrentPrices(bytes32 _srcAddress, bytes32 _targetAddress)
+        external
+        view
+        override
+        returns (uint256, uint256)
+    {
         uint256 srcPrice = priceMap[_srcAddress];
         uint256 targetPrice = priceMap[_targetAddress];
         require(srcPrice != 0, "src price not found");

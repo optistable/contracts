@@ -1,4 +1,5 @@
-pragma solidity ^0.8.13;
+// SPDX-License-Identifier: MIT
+pragma solidity =0.8.21;
 
 import "forge-std/Script.sol";
 
@@ -11,6 +12,7 @@ contract ContractScript is Script {
 
     function run() public {
         vm.startBroadcast();
+        // solhint-disable-next-line
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
 
         // Sepolia feeds here: https://docs.chain.link/data-feeds/price-feeds/addresses#Sepolia%20Testnet

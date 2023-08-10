@@ -1,14 +1,12 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+// SPDX-License-Identifier: MIT
+pragma solidity =0.8.21;
 
 interface IDataProvider {
+    function recordPrice(uint256 _blocknum, uint256 _price) external;
+
     function getCurrentPrice() external view returns (uint256, uint256);
 
-    function getPriceAtBlockNum(
-        uint256 _blocknum
-    ) external view returns (uint256);
-
-    function recordPrice(uint256 _blocknum, uint256 _price) external;
+    function getPriceAtBlockNum(uint256 _blocknum) external view returns (uint256);
 
     function getSymbol() external view returns (bytes32);
 

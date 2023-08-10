@@ -45,7 +45,6 @@ contract GenericDataProvider is IDataProvider, Ownable {
         onChain = _isOnchain;
         committee = OracleCommittee(_committeeAddress);
     }
-    
 
     function recordPrice(uint256 _l1BlockNum, uint256 _price) external virtual {
         require(address(committee) != address(0), "this data provider has not been assigned to a committee");
@@ -109,5 +108,9 @@ contract GenericDataProvider is IDataProvider, Ownable {
         require(msg.sender == systemAddress, "only the system address can change the oracle");
         require(address(committee) == address(0), "the committee has already been set, can no longer be changed");
         committee = OracleCommittee(_oracleCommitteeAddr);
+    }
+
+    function getOracleCommittee() external view returns (address) {
+        return address(committee);
     }
 }

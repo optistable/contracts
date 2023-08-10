@@ -14,7 +14,7 @@ contract Deploy is Script {
     function run() public {
         vm.startBroadcast();
         // solhint-disable-next-line
-        // uint256 deployerKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerKey = vm.envUint("PRIVATE_KEY");
         address systemAddress = vm.envAddress("SYSTEM_ADDRESS");
 
         // Sepolia feeds here: https://docs.chain.link/data-feeds/price-feeds/addresses#Sepolia%20Testnet

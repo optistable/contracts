@@ -20,7 +20,7 @@ contract PolicyTest is Test {
 
     function setUp() public {
         vm.prank(owner);
-        policy = new Policy();
+        policy = new Policy(0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001);
         setUpStablecoins();
     }
 

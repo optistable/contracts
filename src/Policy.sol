@@ -3,7 +3,8 @@ pragma solidity =0.8.21;
 
 import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
-import "openzeppelin-contracts//contracts/utils/Strings.sol";
+import {OracleCommittee} from "./OracleCommittee.sol";
+import "openzeppelin-contracts/contracts/utils/Strings.sol";
 import "./libraries/ERC20Helper.sol";
 import "src/PolicyWrapper.sol";
 
@@ -20,6 +21,9 @@ contract Policy is Ownable {
 
     // blocknumber => currencyInsured => currencyInsurer => policyId
     mapping(uint256 => mapping(address => mapping(address => uint256))) public policyId;
+    // policyId => OracleCommittee
+    mapping(uint256 => OracleCommittee) private _policyOracleCommittee;
+
     // policyId => policyPremiumPCT
     mapping(uint256 => uint256) public policyPremiumPCT;
     // policyId => blocknumber
@@ -78,6 +82,11 @@ contract Policy is Ownable {
         collateralWrapper[policyCounter].setName(string.concat("c", currencyInsurerName, "-", blockNumber.toString()));
         collateralWrapper[policyCounter].setSymbol(string.concat("c", currencyInsurerSymbol, blockNumber.toString()));
 
+        _policyOracleCommittee[policyCounter] = new OracleCommittee( 
+            address(this), _stringToBytes32(currencyInsuredSymbol), currencyInsured, blockNumber, 
+            blockNumber + blocksPerYear 
+        );
+
         policyId[blockNumber][currencyInsured][currencyInsurer] = policyCounter;
         policyPremiumPCT[policyCounter] = _policyPremiumPCT;
         policyBlock[policyCounter] = blockNumber;
@@ -88,8 +97,50 @@ contract Policy is Ownable {
         emit PolicyCreated(policyCounter - 1, blockNumber, currencyInsured, currencyInsurer);
     }
 
+    // Depeg occurs, policy executes and ends
+    function depegEndPolicy(uint256 _policyId) public onlySystemAddress {
+        address _policyAsset = policyAsset[_policyId];
+        address _policyCollateral = policyCollateral[_policyId];
+        PolicyWrapper _assetWrapper = assetWrapper[_policyId];
+        PolicyWrapper _collateralWrapper = collateralWrapper[_policyId];
+
+        for (uint256 i = 0; i < _assetWrapper.getMintersLength(); i++) {
+            address insured = _assetWrapper.getMinter(i);
+            uint256 insuredBalance = _assetWrapper.balanceOf(insured);
+
+            if (insuredBalance > 0) {
+                _assetWrapper.burn(insured, insuredBalance);
+                ERC20Helper.safeTransfer(_policyCollateral, insured, insuredBalance);
+            }
+        }
+
+        for (uint256 i = 0; i < _collateralWrapper.getMintersLength(); i++) {
+            address insurer = _collateralWrapper.getMinter(i);
+            uint256 insurerBalance = _collateralWrapper.balanceOf(insurer);
+            uint256 policyCollateralBalance = ERC20Helper.balanceOf(_policyCollateral, address(this));
+
+            if (insurerBalance > 0) {
+                // In case there is any collateral left it will go to the first subscribers as an incentive
+                if (policyCollateralBalance > 0) {
+                    bool isInsurerBalanceBigger = insurerBalance > policyCollateralBalance;
+                    if (isInsurerBalanceBigger) {
+                        _collateralWrapper.burn(insurer, insurerBalance);
+                        ERC20Helper.safeTransfer(_policyCollateral, insurer, policyCollateralBalance);
+                        ERC20Helper.safeTransfer(_policyAsset, insurer, insurerBalance - policyCollateralBalance);
+                    } else {
+                        _collateralWrapper.burn(insurer, insurerBalance);
+                        ERC20Helper.safeTransfer(_policyCollateral, insurer, insurerBalance);
+                    }
+                } else {
+                    _collateralWrapper.burn(insurer, insurerBalance);
+                    ERC20Helper.safeTransfer(_policyAsset, insurer, insurerBalance);
+                }
+            }
+        }
+    }
+
     // Subcribes to an upcoming policy as insured
-    // TODO: frh -> add events
+    // TODO: frh -> add events, approve here and require blocknumber and TODOs from PR and deploy
     function subscribeAsInsured(uint256 _policyId, uint256 amount) public {
         address _currencyInsured = policyAsset[_policyId];
         uint256 unit = 10 ** ERC20Helper.decimals(_currencyInsured);
@@ -111,6 +162,27 @@ contract Policy is Ownable {
 
     function activatePolicy(uint256 _policyId) public onlySystemAddress {
         _getNextOne(_policyId);
+    }
+
+    // Insured can withdraw whenever he want
+    function withdrawAsInsured(uint256 _policyId, uint256 amount) public {
+        _checkWithDrawerHasFunds(assetWrapper[_policyId], amount);
+
+        address _policyAsset = policyAsset[_policyId];
+
+        assetWrapper[_policyId].burn(msg.sender, amount);
+        ERC20Helper.safeTransfer(_policyAsset, msg.sender, amount);
+    }
+
+    // Insured can only withdraw after policy has ended
+    function withdrawAsInsurer(uint256 _policyId, uint256 amount) public {
+        require(policyBlock[_policyId] + blocksPerYear < block.number, "Policy still active");
+        _checkWithDrawerHasFunds(collateralWrapper[_policyId], amount);
+
+        address _policyCollateral = policyCollateral[_policyId];
+
+        collateralWrapper[_policyId].burn(msg.sender, amount);
+        ERC20Helper.safeTransfer(_policyCollateral, msg.sender, amount);
     }
 
     // Check allowance and balance of subscriber, if insufficient go to next subscriber
@@ -194,6 +266,11 @@ contract Policy is Ownable {
         collateralWrapper[_policyId].mint(insurer, amount);
     }
 
+    function _checkWithDrawerHasFunds(PolicyWrapper policyWrapper, uint256 amount) private view {
+        uint256 balance = policyWrapper.balanceOf(msg.sender);
+        require(balance >= amount, "Not enough balance");
+    }
+
     function _getInsuredAmount(uint256 _policyId, address _insured) private view returns (uint256) {
         return amountAsInsured[_policyId][_insured];
     }
@@ -210,15 +287,12 @@ contract Policy is Ownable {
         return amountAsInsured[_policyId][_insured] * policyPremiumPCT[_policyId] / 100;
     }
 
-    // function endPolicy(uint256 _policyId) public onlySystemAddress {}
-
-    // function withdraw() public {
-    //     require(committee.isClosed(), "you cannot withdraw from a policy that is still open");
-
-    //     if (committee.isDepegged()) {
-    //         //Do something
-    //     } else {
-    //         //Do something
-    //     }
-    // }
+    function _stringToBytes32(string memory _str) private pure returns (bytes32) {
+        bytes32 result;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            result := mload(add(_str, 32))
+        }
+        return result;
+    }
 }

@@ -13,8 +13,6 @@ contract Deploy is Script {
 
     function run() public {
         vm.startBroadcast();
-        // solhint-disable-next-line
-        uint256 deployerKey = vm.envUint("PRIVATE_KEY");
         address systemAddress = vm.envAddress("SYSTEM_ADDRESS");
 
         Policy policy = new Policy(systemAddress);

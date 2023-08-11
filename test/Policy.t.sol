@@ -101,6 +101,24 @@ contract PolicyTest is Test {
         );
     }
 
+    function test_DepegEndPolicy() public {
+        seedSubscribersMoreInsureds();
+        vm.prank(systemAddress);
+        policy.activatePolicy(0);
+        vm.roll(1000);
+        vm.prank(systemAddress);
+        policy.depegEndPolicy(0);
+        for (uint256 i = 1; i < 11; i++) {
+            if (uint256(i) % uint256(2) == uint256(0)) {
+                address insurer = address(uint160(uint256(keccak256(abi.encodePacked(i)))));
+                uint256 insurerQty = 25e18 + 1e18 * i;
+                assertEq(
+                    stableInsuredContract.balanceOf(insurer), insurerQty * policy.policyPremiumPCT(0) / 100 + insurerQty
+                );
+            }
+        }
+    }
+
     function test_SubscribeAsInsured() public {
         vm.prank(owner);
         policy.createPolicy(block.number, stableInsured, stableInsurer, 5);
@@ -119,6 +137,35 @@ contract PolicyTest is Test {
         assertEq(policy.fifoInsurer(0, 0), stableInsurer);
     }
 
+    function test_WithdrawAsInsured() public {
+        vm.prank(owner);
+        policy.createPolicy(block.number, stableInsured, stableInsurer, 5);
+        deal(stableInsured, address(policy), 5e18);
+        deal(address(policy.assetWrapper(0)), address(5), 5e18);
+        assertEq(stableInsuredContract.balanceOf(address(policy)), 5e18);
+        assertEq(policy.assetWrapper(0).balanceOf(address(5)), 5e18);
+        vm.prank(address(5));
+        policy.withdrawAsInsured(0, 5e18);
+        assertEq(stableInsuredContract.balanceOf(address(policy)), 0);
+        assertEq(policy.assetWrapper(0).balanceOf(address(5)), 0);
+        assertEq(stableInsuredContract.balanceOf(address(5)), 5e18);
+    }
+
+    function test_WithdrawAsInsurer() public {
+        vm.prank(owner);
+        policy.createPolicy(block.number, stableInsured, stableInsurer, 5);
+        deal(stableInsurer, address(policy), 5e18);
+        deal(address(policy.collateralWrapper(0)), address(5), 5e18);
+        assertEq(stableInsurerContract.balanceOf(address(policy)), 5e18);
+        assertEq(policy.collateralWrapper(0).balanceOf(address(5)), 5e18);
+        vm.roll(policy.blocksPerYear() + 1000);
+        vm.prank(address(5));
+        policy.withdrawAsInsurer(0, 5e18);
+        assertEq(stableInsurerContract.balanceOf(address(policy)), 0);
+        assertEq(policy.collateralWrapper(0).balanceOf(address(5)), 0);
+        assertEq(stableInsurerContract.balanceOf(address(5)), 5e18);
+    }
+
     function test_RevertWhen_CallerIsNotOwner() public {
         vm.expectRevert("Ownable: caller is not the owner");
         policy.createPolicy(block.number, stableInsured, stableInsurer, 5);
@@ -127,6 +174,16 @@ contract PolicyTest is Test {
     function test_RevertWhen_CallerIsNotSystemAddress() public {
         vm.expectRevert("Only system address");
         policy.activatePolicy(0);
+    }
+
+    function test_RevertWhen_InsurerWithdrawsButPolicyActibe() public {
+        vm.prank(owner);
+        policy.createPolicy(block.number, stableInsured, stableInsurer, 5);
+        deal(stableInsurer, address(policy), 5e18);
+        deal(address(policy.collateralWrapper(0)), address(5), 5e18);
+        vm.prank(address(5));
+        vm.expectRevert("Policy still active");
+        policy.withdrawAsInsurer(0, 5e18);
     }
 
     function test_RevertWhen_MinimumIsNotSubscribed() public {
@@ -138,5 +195,12 @@ contract PolicyTest is Test {
         vm.prank(stableInsurer);
         vm.expectRevert("Minimum not subcribed");
         policy.subscribeAsInsurer(0, 5e18);
+    }
+
+    function test_RevertWhen_WithdrawerHasNotEnoughFunds() public {
+        vm.prank(owner);
+        policy.createPolicy(block.number, stableInsured, stableInsurer, 5);
+        vm.expectRevert("Not enough balance");
+        policy.withdrawAsInsured(0, 50);
     }
 }

@@ -1,5 +1,12 @@
 ## Foundry
 
+
+## Price feeds:
+
+Mumbai USDC: 0x572dDec9087154dC5dfBB1546Bb62713147e0Ab0
+Mumbai USDT: 0x92C09849638959196E976289418e5973CC96d645
+Mumbai DAI: 0x0FCAa9c899EC5A91eBc3D5Dd869De833b06fB046
+
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
 
 Foundry consists of:

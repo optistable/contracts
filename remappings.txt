@@ -7,3 +7,4 @@ redstone-oracles-monorepo/=lib/redstone-oracles-monorepo/
 solmate/=lib/solmate/src/
 @openzeppelin/contracts=lib/openzeppelin-contracts/contracts/
 @chainlink/=lib/chainlink-brownie-contracts/contracts/src/
+@layerzero/=lib/solidity-examples/contracts/

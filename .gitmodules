@@ -13,3 +13,6 @@
 [submodule "lib/chainlink-brownie-contracts"]
 	path = lib/chainlink-brownie-contracts
 	url = https://github.com/smartcontractkit/chainlink-brownie-contracts
+[submodule "lib/solidity-examples"]
+	path = lib/solidity-examples
+	url = git@github.com:LayerZero-Labs/solidity-examples.git

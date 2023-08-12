@@ -2,8 +2,8 @@
 pragma solidity =0.8.21;
 
 import "forge-std/Test.sol";
-import "src/Policy.sol";
-import "src/tokens/MockStable.sol";
+import "../src/Policy.sol";
+import "../src/mocks/MockStable.sol";
 
 contract PolicyTest is Test {
     MockStable public stableInsuredContract;

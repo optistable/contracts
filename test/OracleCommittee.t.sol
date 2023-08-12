@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "../src/Policy.sol";
 import "../src/GenericDataProvider.sol";
 import "../src/OracleCommittee.sol";
-import "../src/tokens/MockStable.sol";
+import "../src/mocks/MockStable.sol";
 
 contract PolicyTest is Test {
     MockStable public stableInsuredContract;

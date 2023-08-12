@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.21;
 
-import {IDataProvider} from "./IDataProvider.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
-import {IPolicy} from "./IPolicy.sol"; //TODO get an interface
+import {IPolicy} from "./interfaces/IPolicy.sol"; //TODO get an interface
+import {IOracleCommittee} from "./interfaces/IOracleCommittee.sol";
 import {GenericDataProvider} from "./GenericDataProvider.sol";
 
 import "forge-std/console.sol";
@@ -133,7 +133,7 @@ contract OracleCommittee is Ownable {
         require(!this.isClosed(), "Committee is closed");
         require(msg.sender == systemAddress, "Only the system can add providers");
         require(depeggedProviders[_provider] == ProviderStatus.NotRegistered, "Provider already registered");
-        IDataProvider iProvider = IDataProvider(_provider);
+        GenericDataProvider iProvider = GenericDataProvider(_provider);
         require(iProvider.getOracleCommittee() == address(0), "provider already registered with another committee");
         depeggedProviders[_provider] = ProviderStatus.RegisteredButNotDepegged;
         providers.push(_provider);

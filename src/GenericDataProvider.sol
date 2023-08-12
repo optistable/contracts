@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.21;
 
-import {IDataProvider} from "./IDataProvider.sol";
+import {IDataProvider} from "./interfaces/IDataProvider.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {AggregatorV3Interface} from "@chainlink/v0.8/interfaces/AggregatorV3Interface.sol";
-import {IOracleCommittee} from "./IOracleCommittee.sol";
+import {IOracleCommittee} from "./interfaces/IOracleCommittee.sol";
 
 import "forge-std/console.sol";
 

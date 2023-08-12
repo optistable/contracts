@@ -7,7 +7,7 @@ import {OracleCommittee} from "./OracleCommittee.sol";
 import "openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ERC20Helper} from "./libraries/ERC20Helper.sol";
 import {PolicyWrapper} from "./PolicyWrapper.sol";
-import {IPolicy} from "./IPolicy.sol";
+import {IPolicy} from "./interfaces/IPolicy.sol";
 
 // solhint-disable-next-line max-states-count
 contract Policy is Ownable, IPolicy {

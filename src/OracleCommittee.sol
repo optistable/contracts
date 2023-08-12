@@ -3,9 +3,9 @@ pragma solidity =0.8.21;
 
 import {IDataProvider} from "./IDataProvider.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
-import {AggregatorV3Interface} from "@chainlink/v0.8/interfaces/AggregatorV3Interface.sol";
-import {Policy} from "./Policy.sol"; //TODO get an interface
+import {IPolicy} from "./IPolicy.sol"; //TODO get an interface
 import {GenericDataProvider} from "./GenericDataProvider.sol";
+
 import "forge-std/console.sol";
 
 // OracleCommittee sets up a series of data providers.
@@ -20,7 +20,7 @@ contract OracleCommittee is Ownable {
     bytes32 public symbol;
     //DataProvider => depegged
 
-    Policy policy;
+    IPolicy policy;
 
     enum ProviderStatus {
         NotRegistered,
@@ -59,15 +59,13 @@ contract OracleCommittee is Ownable {
         require(_symbol != bytes32(0), "Symbol must be specified");
 
         // require(_providers.length >= 1, "You must specify one or more data providers for the committee");
-        policy = Policy(_policy);
+        policy = IPolicy(_policy);
         symbol = _symbol;
         l1TokenAddress = _l1TokenAddress;
-        systemAddress = policy.systemAddress();
+        systemAddress = policy.getSystemAddress();
         startingBlock = _startingBlock;
         endingBlock = _endingBlock;
-        emit OracleCommitteeCreated(
-            _policy, _symbol, _l1TokenAddress, _startingBlock, _endingBlock, policy.systemAddress()
-        );
+        emit OracleCommitteeCreated(_policy, _symbol, _l1TokenAddress, _startingBlock, _endingBlock, systemAddress);
         // Load providers into mapping
         // for (uint256 i = 0; i < _providers.length; i++) {
         //     require(

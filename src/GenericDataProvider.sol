@@ -4,7 +4,7 @@ pragma solidity =0.8.21;
 import {IDataProvider} from "./IDataProvider.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {AggregatorV3Interface} from "@chainlink/v0.8/interfaces/AggregatorV3Interface.sol";
-import {OracleCommittee} from "./OracleCommittee.sol";
+import {IOracleCommittee} from "./IOracleCommittee.sol";
 
 import "forge-std/console.sol";
 
@@ -23,7 +23,7 @@ contract GenericDataProvider is IDataProvider, Ownable {
     uint256 public lastObservation;
     bytes32 public oracleType; // used to dictate behavior to the rollup
     bool public lastObservationDepegged = false; //informational only
-    OracleCommittee committee;
+    IOracleCommittee committee;
 
     event DataProviderCreated(
         address indexed committeeAddress,
@@ -63,7 +63,7 @@ contract GenericDataProvider is IDataProvider, Ownable {
         stableValue = 10 ** _decimals;
         depegTolerance = _depegTolerance;
         onChain = _isOnchain;
-        committee = OracleCommittee(_committeeAddress);
+        committee = IOracleCommittee(_committeeAddress);
         emit DataProviderCreated(
             _committeeAddress,
             committee.getPolicyAddress(),
@@ -163,7 +163,7 @@ contract GenericDataProvider is IDataProvider, Ownable {
     function setOracleCommittee(address _oracleCommitteeAddr) external {
         require(msg.sender == systemAddress, "only the system address can change the oracle");
         require(address(committee) == address(0), "the committee has already been set, can no longer be changed");
-        committee = OracleCommittee(_oracleCommitteeAddr);
+        committee = IOracleCommittee(_oracleCommitteeAddr);
     }
 
     function getOracleCommittee() external view returns (address) {

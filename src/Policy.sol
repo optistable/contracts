@@ -5,11 +5,12 @@ import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {OracleCommittee} from "./OracleCommittee.sol";
 import "openzeppelin-contracts/contracts/utils/Strings.sol";
-import "./libraries/ERC20Helper.sol";
-import "./PolicyWrapper.sol";
+import {ERC20Helper} from "./libraries/ERC20Helper.sol";
+import {PolicyWrapper} from "./PolicyWrapper.sol";
+import {IPolicy} from "./IPolicy.sol";
 
 // solhint-disable-next-line max-states-count
-contract Policy is Ownable {
+contract Policy is Ownable, IPolicy {
     using Strings for uint256;
 
     address public systemAddress;
@@ -132,6 +133,10 @@ contract Policy is Ownable {
                 }
             }
         }
+    }
+
+    function getSystemAddress() public view returns (address) {
+        return systemAddress;
     }
 
     // Subcribes to an upcoming policy as insured

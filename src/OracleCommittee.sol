@@ -28,6 +28,15 @@ contract OracleCommittee is Ownable {
         RegisteredAndDepegged
     }
 
+    event OracleCommitteeCreated(
+        address indexed policyAddress,
+        bytes32 indexed symbol,
+        address indexed l1TokenAddress,
+        uint256 startingBlock,
+        uint256 endingBlock,
+        address systemAddress
+    );
+
     mapping(address => ProviderStatus) depeggedProviders;
     address[] providers; // Used to return a list of providers to the OP Stack hack
 
@@ -44,6 +53,10 @@ contract OracleCommittee is Ownable {
         uint256 _endingBlock
     ) {
         require(_policy != address(0), "Policy must be specified");
+        require(_l1TokenAddress != address(0), "L1 token address must be specified");
+        require(_startingBlock < _endingBlock, "Starting block must be before ending block");
+        //require _symbol is not empty
+        require(_symbol != bytes32(0), "Symbol must be specified");
 
         // require(_providers.length >= 1, "You must specify one or more data providers for the committee");
         policy = Policy(_policy);
@@ -52,6 +65,9 @@ contract OracleCommittee is Ownable {
         systemAddress = policy.systemAddress();
         startingBlock = _startingBlock;
         endingBlock = _endingBlock;
+        emit OracleCommitteeCreated(
+            _policy, _symbol, _l1TokenAddress, _startingBlock, _endingBlock, policy.systemAddress()
+        );
         // Load providers into mapping
         // for (uint256 i = 0; i < _providers.length; i++) {
         //     require(
@@ -66,15 +82,19 @@ contract OracleCommittee is Ownable {
     function recordProviderAsDepegged() external {
         // require(len(providers) > 0, "No providers registered");
         //TODO @avichal, can we get the L1 block here?
-        require(block.number >= startingBlock, "Committee has not started yet");
+        require(startingBlock <= block.number, "Committee has not started yet");
+
         require(
-            depeggedProviders[msg.sender] != ProviderStatus.RegisteredButNotDepegged,
+            depeggedProviders[msg.sender] == ProviderStatus.RegisteredButNotDepegged,
             "provider is either not registered or already depegged"
         );
         depeggedProviders[msg.sender] = ProviderStatus.RegisteredAndDepegged;
         providersReportingDepeg++;
         //Is the majority of providers depegged?
-        // policy.endPolicy();
+        if (providersReportingDepeg >= minProvidersForQuorum) {
+            // TODO @ferrodri
+            // policy.endPolicy();
+        }
     }
 
     function getStartingBlock() public view returns (uint256) {
@@ -86,14 +106,19 @@ contract OracleCommittee is Ownable {
     }
 
     function isDepegged() external view returns (bool) {
-        if (startingBlock <= block.number) {
+        if (block.number < startingBlock) {
             console.log("starting block is less than block number, committee hasn't started");
             return false;
         } //TODO, this should be L1 blocknum
+
         return providersReportingDepeg >= minProvidersForQuorum;
     }
 
     function isClosed() external view returns (bool) {
+        console.log("%s", block.number);
+        console.log("%s", startingBlock);
+        console.log("%s", endingBlock);
+        console.log("%s", this.isDepegged());
         return this.isDepegged() || block.number > endingBlock;
     }
 
@@ -101,8 +126,12 @@ contract OracleCommittee is Ownable {
         return providers;
     }
 
+    function getPolicyAddress() external view returns (address) {
+        return address(policy);
+    }
+
     function addExistingProvider(address _provider) external {
-        require(startingBlock <= block.number, "Committee has already started"); // TODO Is the starting block L1 or L2?
+        require(block.number < startingBlock, "Committee has already started"); // TODO Is the starting block L1 or L2?
         require(!this.isClosed(), "Committee is closed");
         require(msg.sender == systemAddress, "Only the system can add providers");
         require(depeggedProviders[_provider] == ProviderStatus.NotRegistered, "Provider already registered");
@@ -120,7 +149,7 @@ contract OracleCommittee is Ownable {
         uint8 _decimals,
         bool _isOnChain
     ) external returns (address) {
-        require(startingBlock <= block.number, "Committee has already started"); // TODO Is the starting block L1 or L2?
+        require(block.number < startingBlock, "Committee has already started"); // TODO Is the starting block L1 or L2?
         require(!this.isClosed(), "Committee is closed");
         // require(depeggedProviders[msg.sender] == ProviderStatus.NotRegistered, "Provider already registered");
         require(msg.sender == systemAddress, "Only the system can add providers");
@@ -141,7 +170,7 @@ contract OracleCommittee is Ownable {
         depeggedProviders[newProvider] = ProviderStatus.RegisteredButNotDepegged;
         providers.push(newProvider);
         minProvidersForQuorum = (providers.length / 2) + (providers.length % 2);
- 
+
         return newProvider;
     }
 }

@@ -45,7 +45,7 @@ contract PolicyTest is Test {
             address(policy),
             bytes32("USDC"), //_symbol,
             address(1), //_l1TokenAddress
-            block.number, //_startingBlock,
+            block.number+1, //_startingBlock,
             block.number + 1001 //_endingBlock,
         );
 
@@ -73,6 +73,52 @@ contract PolicyTest is Test {
             false //_isOnChain);
         );
         assertEq(committee.minProvidersForQuorum(), 2);
+
+        address[] memory providers = committee.getProviders();
+        for (uint256 i = 0; i < providers.length; i++) {
+            console.log("provider: %s", providers[i]);
+        }
+        GenericDataProvider provider1 = GenericDataProvider(providers[0]);
+        GenericDataProvider provider2 = GenericDataProvider(providers[1]);
+        GenericDataProvider provider3 = GenericDataProvider(providers[2]);
+        uint256 depegPrice = provider1.stableValue() - provider1.depegTolerance();
+        console.log("depegPrice: %s", depegPrice);
+        console.log("stableValue: %s", provider1.stableValue());
+        console.log("depegTolerance: %s", provider1.depegTolerance());
+        console.log("endingBlock: %s", committee.endingBlock());
+        console.log("startingBlock: %s", committee.startingBlock());
+        console.log("block.number: %s", block.number);
+        provider1.recordPrice(block.number, depegPrice + 1);
+        assertEq(provider1.lastObservation(), depegPrice + 1);
+        assertEq(provider1.lastBlockNum(), block.number);
+        assertEq(provider1.lastObservationDepegged(), false);
+
+        vm.expectRevert();
+        provider1.recordPrice(block.number, depegPrice + 1);
+
+        for (uint8 i = 0; i < provider1.minBlocksToSwitchStatus(); i++) {
+            vm.roll(i + 2);
+            provider1.recordPrice(block.number, depegPrice);
+            assertEq(provider1.lastObservation(), depegPrice);
+            assertEq(provider1.lastBlockNum(), block.number);
+            assertEq(provider1.lastObservationDepegged(), true);
+            assertEq(provider1.switchStatusCounter(), i + 1);
+        }
+        assertEq(provider1.depegged(), true);
+        assertEq(committee.isDepegged(), false);
+
+        for (uint8 i = 0; i < provider2.minBlocksToSwitchStatus(); i++) {
+            vm.roll(i + 2);
+            provider2.recordPrice(block.number, depegPrice);
+            assertEq(provider2.lastObservation(), depegPrice);
+            assertEq(provider2.lastBlockNum(), block.number);
+            assertEq(provider2.lastObservationDepegged(), true);
+            assertEq(provider2.switchStatusCounter(), i + 1);
+        }
+        assertEq(provider2.depegged(), true);
+        console.log("provider2 depegged: %s", provider2.depegged());
+
+        assertEq(committee.isDepegged(), true);
         vm.stopPrank();
     }
 }

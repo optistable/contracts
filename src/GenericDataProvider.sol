@@ -25,6 +25,26 @@ contract GenericDataProvider is IDataProvider, Ownable {
     bool public lastObservationDepegged = false; //informational only
     OracleCommittee committee;
 
+    event DataProviderCreated(
+        address indexed committeeAddress,
+        address indexed policyAddress,
+        bytes32 indexed symbol,
+        bytes32 oracleType,
+        uint256 depegTolerance,
+        uint8 minBlocksToSwitchStatus,
+        uint8 decimals,
+        bool onChain,
+        uint256 stableValue
+    );
+    event PriceRecorded(
+        address indexed committeeAddress,
+        address indexed policyAddress,
+        bytes32 indexed symbol,
+        uint256 l1BlockNum,
+        uint256 price,
+        bool depegged
+    );
+
     constructor(
         bytes32 _oracleType,
         address _systemAddress, // The address authorized to record prices
@@ -44,14 +64,46 @@ contract GenericDataProvider is IDataProvider, Ownable {
         depegTolerance = _depegTolerance;
         onChain = _isOnchain;
         committee = OracleCommittee(_committeeAddress);
+        emit DataProviderCreated(
+            _committeeAddress,
+            committee.getPolicyAddress(),
+            _symbol,
+            _oracleType,
+            _depegTolerance,
+            _minBlocksToSwitchStatus,
+            _decimals,
+            _isOnchain,
+            stableValue
+        );
     }
-    
+
+    // Strictly a debug function for avichal
+    function shouldRecordPrice(uint256 _l1BlockNum) external view returns (bool) {
+        if (address(committee) == address(0)) {
+            console.log("false, no committee");
+            return false;
+        }
+        if (_l1BlockNum > committee.getEndingBlock()) {
+            console.log("false, _l1BlockNum > committee.getEndingBlock()");
+            return false;
+        }
+        if (_l1BlockNum <= lastBlockNum) {
+            console.log("false, _l1BlockNum <= lastBlockNum");
+            return false;
+        }
+        if (depegged) {
+            console.log("false, depegged");
+            return false;
+        }
+        return true;
+    }
 
     function recordPrice(uint256 _l1BlockNum, uint256 _price) external virtual {
         require(address(committee) != address(0), "this data provider has not been assigned to a committee");
         require(!depegged, "this data provider has concluded, marking this stablecoin as depegged");
+        console.log("recordPrice %s %s %s %s", _l1BlockNum);
         require(_l1BlockNum <= committee.getEndingBlock(), "this data provider has finished recording prices");
-        require(_l1BlockNum >= lastBlockNum, "have already recorded price for this block");
+        require(_l1BlockNum > lastBlockNum, "have already recorded price for this block");
         require(msg.sender == systemAddress, "only the system address can record a price");
 
         bool currentlyDepegged = stableValue - _price >= depegTolerance;
@@ -71,6 +123,9 @@ contract GenericDataProvider is IDataProvider, Ownable {
         lastBlockNum = _l1BlockNum;
         lastObservation = _price;
         lastObservationDepegged = currentlyDepegged;
+        emit PriceRecorded(
+            address(committee), committee.getPolicyAddress(), symbol, _l1BlockNum, _price, currentlyDepegged
+        );
     }
 
     function getLastPrice() external view returns (uint256) {

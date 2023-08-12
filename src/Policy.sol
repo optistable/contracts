@@ -6,7 +6,7 @@ import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {OracleCommittee} from "./OracleCommittee.sol";
 import "openzeppelin-contracts/contracts/utils/Strings.sol";
 import "./libraries/ERC20Helper.sol";
-import "src/PolicyWrapper.sol";
+import "./PolicyWrapper.sol";
 
 // solhint-disable-next-line max-states-count
 contract Policy is Ownable {

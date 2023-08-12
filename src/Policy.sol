@@ -55,11 +55,6 @@ contract Policy is Ownable {
         uint256 indexed policyId, uint256 indexed blockNumber, address indexed currencyInsured, address currencyInsurer
     );
 
-    modifier onlySystemAddress() {
-        require(msg.sender == systemAddress, "Only system address");
-        _;
-    }
-
     constructor(address _systemAddress) {
         systemAddress = _systemAddress;
     }
@@ -98,7 +93,7 @@ contract Policy is Ownable {
     }
 
     // Depeg occurs, policy executes and ends
-    function depegEndPolicy(uint256 _policyId) public onlySystemAddress {
+    function depegEndPolicy(uint256 _policyId) public onlyOwner {
         address _policyAsset = policyAsset[_policyId];
         address _policyCollateral = policyCollateral[_policyId];
         PolicyWrapper _assetWrapper = assetWrapper[_policyId];
@@ -160,7 +155,7 @@ contract Policy is Ownable {
         fifoInsurer[_policyId].push(msg.sender);
     }
 
-    function activatePolicy(uint256 _policyId) public onlySystemAddress {
+    function activatePolicy(uint256 _policyId) public onlyOwner {
         _getNextOne(_policyId);
     }
 

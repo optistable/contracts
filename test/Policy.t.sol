@@ -12,7 +12,7 @@ contract PolicyTest is Test {
     address public stableInsurer;
     address public owner = address(50);
     Policy public policy;
-    address public systemAddress = address(0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001);
+    // address public systemAddress = address(0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001);
 
     event PolicyCreated(
         uint256 indexed policyId, uint256 indexed blockNumber, address indexed currencyInsured, address currencyInsurer
@@ -59,7 +59,7 @@ contract PolicyTest is Test {
 
     function test_ActivatePolicy() public {
         seedSubscribersMoreInsureds();
-        vm.prank(systemAddress);
+        vm.prank(owner);
         policy.activatePolicy(0);
         // collateralWrapper
         for (uint256 i = 1; i < 11; i++) {
@@ -103,10 +103,10 @@ contract PolicyTest is Test {
 
     function test_DepegEndPolicy() public {
         seedSubscribersMoreInsureds();
-        vm.prank(systemAddress);
+        vm.prank(owner);
         policy.activatePolicy(0);
         vm.roll(1000);
-        vm.prank(systemAddress);
+        vm.prank(owner);
         policy.depegEndPolicy(0);
         for (uint256 i = 1; i < 11; i++) {
             if (uint256(i) % uint256(2) == uint256(0)) {
@@ -169,11 +169,6 @@ contract PolicyTest is Test {
     function test_RevertWhen_CallerIsNotOwner() public {
         vm.expectRevert("Ownable: caller is not the owner");
         policy.createPolicy(block.number, stableInsured, stableInsurer, 5);
-    }
-
-    function test_RevertWhen_CallerIsNotSystemAddress() public {
-        vm.expectRevert("Only system address");
-        policy.activatePolicy(0);
     }
 
     function test_RevertWhen_InsurerWithdrawsButPolicyActibe() public {

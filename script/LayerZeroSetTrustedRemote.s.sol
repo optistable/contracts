@@ -36,7 +36,6 @@ contract SetTrustedRemote is Script {
 
     function run() public {
         vm.startBroadcast();
-
         address lzSourceContract = vm.envAddress("LZ_SOURCE_CONTRACT"); //The address of the source contract on the source chain
         uint16 lzSourceChainId = chainIdToLzChainId[block.chainid]; //TODO this shouldn't be necessary
         address lzDestContract = vm.envAddress("LZ_DEST_CONTRACT"); //The address of the source contract on the source chain

@@ -77,6 +77,11 @@ contract GenericDataProvider is IDataProvider, Ownable {
         );
     }
 
+    modifier onlyOwnerOrCommittee() {
+        require(msg.sender == owner() || msg.sender == address(committee));
+        _;
+    }
+
     // Strictly a debug function for avichal
     function shouldRecordPrice(uint256 _l1BlockNum) external view returns (bool) {
         if (address(committee) == address(0)) {
@@ -98,13 +103,18 @@ contract GenericDataProvider is IDataProvider, Ownable {
         return true;
     }
 
-    function recordPrice(uint256 _l1BlockNum, uint256 _price) external virtual {
+    function recordPrice(uint256 _l1BlockNum, uint256 _price) external virtual onlyOwnerOrCommittee {
         require(address(committee) != address(0), "this data provider has not been assigned to a committee");
         require(!depegged, "this data provider has concluded, marking this stablecoin as depegged");
-        console.log("recordPrice %s %s %s %s", _l1BlockNum);
-        require(_l1BlockNum <= committee.getEndingBlock(), "this data provider has finished recording prices");
-        require(_l1BlockNum > lastBlockNum, "have already recorded price for this block");
-        require(msg.sender == systemAddress, "only the system address can record a price");
+        console.log("recordPrice %s", _price);
+        console.log("on block num %s", block.number);
+
+        require(block.number != lastBlockNum, "Have already recorded prices for this blocknum");
+        require(block.number <= committee.getEndingBlock(), "this data provider has finished recording prices");
+        //TODO Below are commented so we can record the demo
+        // require(_l1BlockNum <= committee.getEndingBlock(), "this data provider has finished recording prices");
+        // require(_l1BlockNum > lastBlockNum, "have already recorded price for this block");
+        // require(msg.sender == systemAddress, "only the system address can record a price");
 
         bool currentlyDepegged = stableValue - _price >= depegTolerance;
         if (currentlyDepegged) {
@@ -120,11 +130,18 @@ contract GenericDataProvider is IDataProvider, Ownable {
             // This data provider will count as one of many sources of truth that this stablecoin is depegged
             committee.recordProviderAsDepegged();
         }
-        lastBlockNum = _l1BlockNum;
+        //TODO Below are commented so we can record the demo
+        lastBlockNum = block.number;
         lastObservation = _price;
         lastObservationDepegged = currentlyDepegged;
         emit PriceRecorded(
-            address(committee), committee.getPolicyAddress(), symbol, _l1BlockNum, _price, currentlyDepegged
+            // address(committee), committee.getPolicyAddress(), symbol, _l1BlockNum, _price, currentlyDepegged
+            address(committee),
+            committee.getPolicyAddress(),
+            symbol,
+            block.number,
+            _price,
+            currentlyDepegged
         );
     }
 

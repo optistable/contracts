@@ -7,10 +7,10 @@ import {OracleCommittee} from "./OracleCommittee.sol";
 import "openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ERC20Helper} from "./libraries/ERC20Helper.sol";
 import {PolicyWrapper} from "./PolicyWrapper.sol";
-import {IPolicy} from "./interfaces/IPolicy.sol";
+import "forge-std/console.sol";
 
 // solhint-disable-next-line max-states-count
-contract Policy is Ownable, IPolicy {
+contract Policy is Ownable {
     using Strings for uint256;
 
     address public systemAddress;
@@ -23,7 +23,7 @@ contract Policy is Ownable, IPolicy {
     // blocknumber => currencyInsured => currencyInsurer => policyId
     mapping(uint256 => mapping(address => mapping(address => uint256))) public policyId;
     // policyId => OracleCommittee
-    mapping(uint256 => OracleCommittee) private _policyOracleCommittee;
+    mapping(uint256 => OracleCommittee) public policyOracleCommittee;
 
     // policyId => policyPremiumPCT
     mapping(uint256 => uint256) public policyPremiumPCT;
@@ -56,8 +56,22 @@ contract Policy is Ownable, IPolicy {
         uint256 indexed policyId, uint256 indexed blockNumber, address indexed currencyInsured, address currencyInsurer
     );
 
+    modifier onlySystemAddress() {
+        require(msg.sender == systemAddress, "Only system address");
+        _;
+    }
+
+    modifier onlyOwnerOrOracleCommittee(uint256 _policyId) {
+        OracleCommittee o = policyOracleCommittee[_policyId];
+        require(
+            msg.sender == owner() || msg.sender == address(o), "Only system address or owner can call this function"
+        );
+        _;
+    }
+
     constructor(address _systemAddress) {
-        systemAddress = _systemAddress;
+        systemAddress = msg.sender; //TODO Temporarily set here to make it onlyOwner equivalent in case anything checks for sysAddress
+            // systemAddress = _systemAddress;
     }
 
     function createPolicy(
@@ -65,7 +79,13 @@ contract Policy is Ownable, IPolicy {
         address currencyInsured,
         address currencyInsurer,
         uint256 _policyPremiumPCT
-    ) public onlyOwner {
+    )
+        public
+        returns (
+            /*onlyOwner*/
+            uint256
+        )
+    {
         string memory currencyInsuredName = ERC20Helper.name(currencyInsured);
         string memory currencyInsuredSymbol = ERC20Helper.symbol(currencyInsured);
         string memory currencyInsurerName = ERC20Helper.name(currencyInsurer);
@@ -78,7 +98,8 @@ contract Policy is Ownable, IPolicy {
         collateralWrapper[policyCounter].setName(string.concat("c", currencyInsurerName, "-", blockNumber.toString()));
         collateralWrapper[policyCounter].setSymbol(string.concat("c", currencyInsurerSymbol, blockNumber.toString()));
 
-        _policyOracleCommittee[policyCounter] = new OracleCommittee( 
+        policyOracleCommittee[policyCounter] = new OracleCommittee(
+            policyCounter,
             address(this), _stringToBytes32(currencyInsuredSymbol), currencyInsured, blockNumber, 
             blockNumber + blocksPerYear 
         );
@@ -91,10 +112,12 @@ contract Policy is Ownable, IPolicy {
         policyCounter++;
 
         emit PolicyCreated(policyCounter - 1, blockNumber, currencyInsured, currencyInsurer);
+        return policyCounter - 1;
     }
 
     // Depeg occurs, policy executes and ends
-    function depegEndPolicy(uint256 _policyId) public onlyOwner {
+    // function depegEndPolicy(uint256 _policyId) public onlySystemAddress {
+    function depegEndPolicy(uint256 _policyId) public onlyOwnerOrOracleCommittee(_policyId) {
         address _policyAsset = policyAsset[_policyId];
         address _policyCollateral = policyCollateral[_policyId];
         PolicyWrapper _assetWrapper = assetWrapper[_policyId];
@@ -160,6 +183,7 @@ contract Policy is Ownable, IPolicy {
         fifoInsurer[_policyId].push(msg.sender);
     }
 
+    // function activatePolicy(uint256 _policyId) public onlySystemAddress()  {
     function activatePolicy(uint256 _policyId) public onlyOwner {
         _getNextOne(_policyId);
     }
@@ -185,7 +209,33 @@ contract Policy is Ownable, IPolicy {
         ERC20Helper.safeTransfer(_policyCollateral, msg.sender, amount);
     }
 
+    function addNewProviderToCommittee(
+        uint256 _policyId,
+        bytes32 _oracleType,
+        uint256 _depegTolerance,
+        uint8 _minBlocksToSwitchStatus,
+        uint8 _decimals,
+        bool _isOnChain
+    ) public onlyOwnerOrOracleCommittee(_policyId) returns (address) {
+        return policyOracleCommittee[_policyId].addNewProvider(
+            _oracleType, _depegTolerance, _minBlocksToSwitchStatus, _decimals, _isOnChain
+        );
+    }
+
+    function recordPriceForCommittee(uint256 _policyId, address _provider, uint256 _l1BlockNum, uint256 _price)
+        external
+        onlyOwnerOrOracleCommittee(_policyId)
+    {
+        console.log("From policy, recording prices for %s", _provider);
+        try policyOracleCommittee[_policyId].recordPriceForProvider(_provider, _l1BlockNum, _price) {
+            console.log("Successfully recorded price for %s", _provider);
+        } catch Error(string memory reason) {
+            console.log("Recording price from committee failed, reason: %s", reason);
+            require(false, "caught error recording price for committee");
+        }
+    }
     // Check allowance and balance of subscriber, if insufficient go to next subscriber
+
     function _checkSubscription(address subscriber, uint256 amount, uint256 _policyId, bool isInsuredAddress)
         private
         returns (bool)

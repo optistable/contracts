@@ -14,6 +14,7 @@ contract OracleCommittee is Ownable {
     uint256 public startingBlock;
     uint256 public endingBlock;
     uint256 public minProvidersForQuorum;
+    uint256 public policyId;
     uint8 public providersReportingDepeg;
     address public systemAddress;
     address public l1TokenAddress;
@@ -40,25 +41,28 @@ contract OracleCommittee is Ownable {
     mapping(address => ProviderStatus) depeggedProviders;
     address[] providers; // Used to return a list of providers to the OP Stack hack
 
-    modifier onlyPolicy() {
-        require(msg.sender == address(policy));
+    modifier onlyOwnerOrPolicy() {
+        require(msg.sender == owner() || msg.sender == address(policy), "Only owner or policy can call this function");
         _;
     }
 
     constructor(
+        uint256 _policyId,
         address _policy,
         bytes32 _symbol,
         address _l1TokenAddress,
         uint256 _startingBlock,
         uint256 _endingBlock
     ) {
+        // TODO Policy ID validation should happen here
         require(_policy != address(0), "Policy must be specified");
         require(_l1TokenAddress != address(0), "L1 token address must be specified");
         require(_startingBlock < _endingBlock, "Starting block must be before ending block");
         //require _symbol is not empty
         require(_symbol != bytes32(0), "Symbol must be specified");
-
         // require(_providers.length >= 1, "You must specify one or more data providers for the committee");
+
+        policyId = _policyId;
         policy = IPolicy(_policy);
         symbol = _symbol;
         l1TokenAddress = _l1TokenAddress;
@@ -78,8 +82,6 @@ contract OracleCommittee is Ownable {
     }
 
     function recordProviderAsDepegged() external {
-        // require(len(providers) > 0, "No providers registered");
-        //TODO @avichal, can we get the L1 block here?
         require(startingBlock <= block.number, "Committee has not started yet");
 
         require(
@@ -90,8 +92,7 @@ contract OracleCommittee is Ownable {
         providersReportingDepeg++;
         //Is the majority of providers depegged?
         if (providersReportingDepeg >= minProvidersForQuorum) {
-            // TODO @ferrodri
-            // policy.endPolicy();
+            policy.depegEndPolicy(policyId);
         }
     }
 
@@ -128,10 +129,23 @@ contract OracleCommittee is Ownable {
         return address(policy);
     }
 
-    function addExistingProvider(address _provider) external {
+    function recordPriceForProvider(address _provider, uint256 _l1BlockNum, uint256 _price)
+        external
+        onlyOwnerOrPolicy
+    {
+        require(
+            depeggedProviders[_provider] == ProviderStatus.RegisteredButNotDepegged,
+            "provider is either not registered or already depegged"
+        );
+        console.log("From committee, recording prices for %s", _provider);
+        GenericDataProvider provider = GenericDataProvider(_provider);
+        provider.recordPrice(_l1BlockNum, _price);
+    }
+
+    function addExistingProvider(address _provider) external onlyOwnerOrPolicy {
         require(block.number < startingBlock, "Committee has already started"); // TODO Is the starting block L1 or L2?
         require(!this.isClosed(), "Committee is closed");
-        require(msg.sender == systemAddress, "Only the system can add providers");
+        // require(msg.sender == systemAddress, "Only the system can add providers");
         require(depeggedProviders[_provider] == ProviderStatus.NotRegistered, "Provider already registered");
         GenericDataProvider iProvider = GenericDataProvider(_provider);
         require(iProvider.getOracleCommittee() == address(0), "provider already registered with another committee");
@@ -139,18 +153,20 @@ contract OracleCommittee is Ownable {
         providers.push(_provider);
     }
 
-    // Shortcut, makes it easier
+    // Shortcut, makes it easier to start an oracle committee from scratch
     function addNewProvider(
         bytes32 _oracleType,
         uint256 _depegTolerance,
         uint8 _minBlocksToSwitchStatus,
         uint8 _decimals,
         bool _isOnChain
-    ) external returns (address) {
-        require(block.number < startingBlock, "Committee has already started"); // TODO Is the starting block L1 or L2?
+    ) external onlyOwnerOrPolicy returns (address) {
+        //TODO Uncomment below for real contract.
+        // require(block.number < startingBlock, "Committee has already started"); // TODO Is the starting block L1 or L2?
         require(!this.isClosed(), "Committee is closed");
-        // require(depeggedProviders[msg.sender] == ProviderStatus.NotRegistered, "Provider already registered");
-        require(msg.sender == systemAddress, "Only the system can add providers");
+        require(depeggedProviders[msg.sender] == ProviderStatus.NotRegistered, "Provider already registered");
+        // TODO onlyOwner is being used for demo, but really only system address should be able to call this
+        // require(msg.sender == systemAddress, "Only the system can add providers");
 
         console.log("Creating new provider...");
         address newProvider = address(

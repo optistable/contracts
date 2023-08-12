@@ -15,7 +15,7 @@ contract Deploy is Script {
         vm.startBroadcast();
         address policyAddress = vm.envAddress("POLICY_ADDRESS");
         Policy policy = Policy(policyAddress);
-        policy.createPolicy(
+        uint256 policyId = policy.createPolicy(
             //Addresses are optistable usdc and optistable usdt
             block.number,
             0x222e9a549274B796715a4af8a9BB96bC6EFCd13A,
@@ -23,57 +23,48 @@ contract Deploy is Script {
             5
         );
 
-        // mapping(uint256 => address) storage policyAsset = policy.policyOracleCommittee(policy.id);
-        // OracleCommittee committee = new OracleCommittee(
-        //     address(policy),
-        //     bytes32("USDC"), //_symbol,
-        //     address(1), //_l1TokenAddress
-        //     block.number + 10, //_startingBlock,
-        //     block.number + 1001 //_endingBlock,
-        // );
+        policy.addNewProviderToCommittee(
+            policyId,
+            bytes32("chainlink-data-feed"), //_oracleType
+            5, //_depegTolerance
+            5, //_minBlocksToSwitchStatus
+            8, //_decimals
+            true //_isOnChain);
+        );
+        policy.addNewProviderToCommittee(
+            policyId,
+            bytes32("chainlink-ccip-base"), //_oracleType
+            5, //_depegTolerance
+            5, //_minBlocksToSwitchStatus
+            8, //_decimals
+            true //_isOnChain);
+        );
+        policy.addNewProviderToCommittee(
+            policyId,
+            bytes32("redstone-data-feed"), //_oracleType
+            5, //_depegTolerance
+            5, //_minBlocksToSwitchStatus
+            8, //_decimals
+            true //_isOnChain);
+        );
 
-        // policy.ge
+        policy.addNewProviderToCommittee(
+            policyId,
+            bytes32("layer-zero-op-goerli"), //_oracleType
+            5, //_depegTolerance
+            5, //_minBlocksToSwitchStatus
+            8, //_decimals
+            true //_isOnChain);
+        );
 
-        // committee.addNewProvider(
-        //     bytes32("chainlink-data-feed"), //_oracleType
-        //     5, //_depegTolerance
-        //     5, //_minBlocksToSwitchStatus
-        //     8, //_decimals
-        //     true //_isOnChain);
-        // );
-
-        // committee.addNewProvider(
-        //     bytes32("chainlink-ccip-base"), //_oracleType
-        //     5, //_depegTolerance
-        //     5, //_minBlocksToSwitchStatus
-        //     8, //_decimals
-        //     true //_isOnChain);
-        // );
-
-        // committee.addNewProvider(
-        //     bytes32("redstone-data-feed"), //_oracleType
-        //     5, //_depegTolerance
-        //     5, //_minBlocksToSwitchStatus
-        //     8, //_decimals
-        //     false //_isOnChain);
-        // );
-
-        // committee.addNewProvider(
-        //     bytes32("layer-zero-op-goerli"), //_oracleType
-        //     5, //_depegTolerance
-        //     5, //_minBlocksToSwitchStatus
-        //     8, //_decimals
-        //     false //_isOnChain);
-        // );
-
-        // committee.addNewProvider(
-        //     bytes32("coingecko"), //_oracleType
-        //     5, //_depegTolerance
-        //     5, //_minBlocksToSwitchStatus
-        //     8, //_decimals
-        //     false //_isOnChain);
-        // );
-
+        policy.addNewProviderToCommittee(
+            policyId,
+            bytes32("coingecko"), //_oracleType
+            5, //_depegTolerance
+            5, //_minBlocksToSwitchStatus
+            8, //_decimals
+            true //_isOnChain);
+        );
         vm.stopBroadcast();
     }
 }

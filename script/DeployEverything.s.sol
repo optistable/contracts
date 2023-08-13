@@ -22,15 +22,15 @@ contract Deploy is Script {
         console.log("Creating usdc/usdt policy");
         result[0] = policyManager.createPolicy(_blockNumber, usdcAddress, usdtAddress, 5);
         console.log("Creating usdc/dai policy");
-        result[1] = policyManager.createPolicy(_blockNumber, usdcAddress, daiAddress, 5);
+        result[1] = policyManager.createPolicy(_blockNumber + 1000, usdcAddress, daiAddress, 5);
         console.log("Creating usdt/usdc policy");
-        result[2] = policyManager.createPolicy(_blockNumber, usdtAddress, usdcAddress, 5);
+        result[2] = policyManager.createPolicy(_blockNumber + 1000, usdtAddress, usdcAddress, 5);
         console.log("Creating usdt/dai policy");
         result[3] = policyManager.createPolicy(_blockNumber, usdtAddress, daiAddress, 5);
         console.log("Creating dai/usdc policy");
         result[4] = policyManager.createPolicy(_blockNumber, daiAddress, usdcAddress, 5);
         console.log("Creating dai/usdt policy");
-        result[5] = policyManager.createPolicy(_blockNumber, daiAddress, usdtAddress, 5);
+        result[5] = policyManager.createPolicy(_blockNumber + 1000, daiAddress, usdtAddress, 5);
         console.log("Finished creating policies");
         return result;
     }

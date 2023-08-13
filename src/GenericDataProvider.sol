@@ -186,4 +186,24 @@ contract GenericDataProvider is IDataProvider, Ownable {
     function getOracleCommittee() external view returns (address) {
         return address(committee);
     }
+
+    struct OnlyTheMostRelevantMetadata {
+        bytes32 symbol;
+        bytes32 oracleType;
+        uint256 lastBlockNum;
+        uint256 lastObservation;
+        uint8 switchStatusCounter;
+        bool lastObservationDepegged;
+    }
+
+    function getProviderMetadata() external view returns (OnlyTheMostRelevantMetadata memory) {
+        return OnlyTheMostRelevantMetadata({
+            symbol: symbol,
+            oracleType: oracleType,
+            lastBlockNum: lastBlockNum,
+            lastObservation: lastObservation,
+            switchStatusCounter: switchStatusCounter,
+            lastObservationDepegged: lastObservationDepegged
+        });
+    }
 }

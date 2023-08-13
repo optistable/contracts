@@ -8,6 +8,6 @@ deploy-anvil :; forge script script/${contract}.s.sol:Deploy${contract} --rpc-ur
 
 # Example on how to run this command: "make deploy-goerli contract=Policy"
 # deploy-goerli :; forge script script/${contract}.s.sol:Deploy${contract} --rpc-url ${GOERLI_RPC_URL}  --private-key ${PRIVATE_KEY} --broadcast --verify --etherscan-api-key ${API_KEY} -vvvv --slow --legacy
-deploy-goerli :; forge script script/${contract}.s.sol:Deploy${contract} --rpc-url ${GOERLI_RPC_URL}  --private-key ${PRIVATE_KEY} --broadcast --verify -vvvv --slow --legacy
+deploy-goerli :; forge script script/${contract}.s.sol:Deploy${contract} --rpc-url ${GOERLI_RPC_URL}  --private-key ${PRIVATE_KEY} --etherscan-api-key ${ETHERSCAN_API_KEY} --broadcast --verify -vvvv --slow --legacy
 
 deploy-all :; make deploy-${network} contract=Review

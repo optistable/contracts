@@ -167,4 +167,24 @@ contract OracleCommittee is IOracleCommittee, Ownable {
     function getProviders() external view returns (address[] memory) {
         return providers;
     }
+
+    struct OnlyTheMostRelevantOracleMetadata {
+        bytes32 symbol;
+        address l1TokenAddress;
+        uint256 startingBlock;
+        uint256 endingBlock;
+        uint256 providersReportingDepeg;
+        address[] providers;
+    }
+
+    function getOracleMetadata() external view returns (OnlyTheMostRelevantOracleMetadata memory) {
+        return OnlyTheMostRelevantOracleMetadata({
+            symbol: symbol,
+            l1TokenAddress: l1TokenAddress,
+            startingBlock: startingBlock,
+            endingBlock: endingBlock,
+            providersReportingDepeg: providersReportingDepeg,
+            providers: providers
+        });
+    }
 }

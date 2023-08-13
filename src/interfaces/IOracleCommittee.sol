@@ -12,12 +12,13 @@ interface IOracleCommittee {
 
     function isClosed() external view returns (bool);
 
-    // function getProviders() external view returns (address[] memory);
+    function getProviders() external view returns (address[] memory);
 
     function getEndingBlock() external view returns (uint256);
 
     function getPolicyAddress() external view returns (address);
 
+    function recordPriceForProvider(address _provider, uint256 _l1BlockNum, uint256 _price) external;
     // function addExistingProvider(address _provider) external;
 
     // Shortcut, makes it easier

@@ -2,7 +2,7 @@
 pragma solidity =0.8.21;
 
 import "forge-std/Test.sol";
-import "../src/Policy.sol";
+import "../src/PolicyManager.sol";
 import "../src/GenericDataProvider.sol";
 import "../src/OracleCommittee.sol";
 import "../src/mocks/MockStable.sol";
@@ -14,7 +14,7 @@ contract PolicyTest is Test {
     address public stableInsurer;
     // address public owner = address(50);
     address public owner = address(0x9cbC225B9d08502d231a6d8c8FF0Cc66aDcc2A4F);
-    Policy public policy;
+    PolicyManager public policyManager;
     address public systemAddress = address(0x9cbC225B9d08502d231a6d8c8FF0Cc66aDcc2A4F);
     // address public systemAddress = address(0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001);
 
@@ -24,7 +24,7 @@ contract PolicyTest is Test {
 
     function setUp() public {
         vm.prank(owner);
-        policy = new Policy(systemAddress);
+        policyManager = new PolicyManager(systemAddress);
         setUpStablecoins();
     }
 
@@ -39,12 +39,25 @@ contract PolicyTest is Test {
         console.log("starting test");
         vm.startPrank(owner);
         console.log("creating policy");
-        uint256 policyId = policy.createPolicy(block.number + 1, stableInsured, stableInsurer, 5); //TODO committee address is blank
-
+        uint256 policyId = policyManager.createPolicy(block.number + 1, stableInsured, stableInsurer, 5); //TODO committee address is blank
+        console.log("Finished creating policy, now creating committee");
+        console.log(policyManager.policyAsset(policyId));
+        console.log(policyManager.policyBlock(policyId));
+        console.log(policyManager.policyBlock(policyId) + policyManager.blocksPerYear());
+        console.logBytes32(policyManager.policyAssetSymbolBytes32(policyId));
+        OracleCommittee committee = new OracleCommittee(
+            policyManager.policyAssetSymbolBytes32(policyId),
+            policyManager.policyAsset(policyId),
+            policyManager.policyBlock(policyId),
+            policyManager.policyBlock(policyId) + policyManager.blocksPerYear()
+        );
+        committee.setPolicy(address(policyManager), policyId);
+        console.log("Finished creating committee, assigning committee to policy");
+        policyManager.setOracleCommittee(policyId, address(committee));
         console.log("finished creating policy");
-        OracleCommittee committee = policy.policyOracleCommittee(policyId);
+
         console.log("committee address: %s", address(committee));
-        policy.addNewProviderToCommittee(
+        policyManager.addNewProviderToCommittee(
             policyId,
             bytes32("chainlink-data-feed"), //_oracleType
             5, //_depegTolerance
@@ -53,7 +66,7 @@ contract PolicyTest is Test {
             true //_isOnChain);
         );
         assertEq(committee.minProvidersForQuorum(), 1);
-        policy.addNewProviderToCommittee(
+        policyManager.addNewProviderToCommittee(
             policyId,
             bytes32("redstone-data-feed"), //_oracleType
             5, //_depegTolerance
@@ -62,7 +75,7 @@ contract PolicyTest is Test {
             true //_isOnChain);
         );
         assertEq(committee.minProvidersForQuorum(), 1);
-        policy.addNewProviderToCommittee(
+        policyManager.addNewProviderToCommittee(
             policyId,
             bytes32("coingecko-data-feed"), //_oracleType
             5, //_depegTolerance
@@ -83,18 +96,18 @@ contract PolicyTest is Test {
         console.log("startingBlock: %s", committee.startingBlock());
         console.log("block.number: %s", block.number);
 
-        policy.recordPriceForCommittee(policyId, address(provider1), block.number, depegPrice + 1);
+        policyManager.recordPriceForCommittee(policyId, address(provider1), block.number, depegPrice + 1);
         assertEq(provider1.lastObservation(), depegPrice + 1);
         assertEq(provider1.lastBlockNum(), block.number);
         assertEq(provider1.lastObservationDepegged(), false);
         console.log("Finished smoke test");
 
         vm.expectRevert();
-        policy.recordPriceForCommittee(policyId, address(provider1), block.number, depegPrice + 1);
+        policyManager.recordPriceForCommittee(policyId, address(provider1), block.number, depegPrice + 1);
 
         for (uint8 i = 0; i < provider1.minBlocksToSwitchStatus(); i++) {
             vm.roll(i + 2);
-            policy.recordPriceForCommittee(policyId, address(provider1), block.number, depegPrice);
+            policyManager.recordPriceForCommittee(policyId, address(provider1), block.number, depegPrice);
             assertEq(provider1.lastObservation(), depegPrice);
             assertEq(provider1.lastBlockNum(), block.number);
             assertEq(provider1.lastObservationDepegged(), true);
@@ -105,7 +118,7 @@ contract PolicyTest is Test {
 
         for (uint8 i = 0; i < provider2.minBlocksToSwitchStatus(); i++) {
             vm.roll(i + 2);
-            policy.recordPriceForCommittee(policyId, address(provider2), block.number, depegPrice);
+            policyManager.recordPriceForCommittee(policyId, address(provider2), block.number, depegPrice);
             assertEq(provider2.lastObservation(), depegPrice);
             assertEq(provider2.lastBlockNum(), block.number);
             assertEq(provider2.lastObservationDepegged(), true);

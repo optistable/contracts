@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.21;
 
-import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
-import {OracleCommittee} from "./OracleCommittee.sol";
+// import {OracleCommittee} from "./OracleCommittee.sol";
 import {ERC20Helper} from "./libraries/ERC20Helper.sol";
 import {PolicyWrapper} from "./PolicyWrapper.sol";
-import "openzeppelin-contracts/contracts/utils/Strings.sol";
+import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 // import "forge-std/console.sol";
 
 // solhint-disable-next-line max-states-count
@@ -24,7 +23,7 @@ contract Policy is Ownable {
     mapping(uint256 => mapping(address => mapping(address => uint256))) public policyId;
     // policyId => OracleCommittee
 
-    mapping(uint256 => OracleCommittee) public policyOracleCommittee;
+    // mapping(uint256 => OracleCommittee) public policyOracleCommittee;
 
     // policyId => policyPremiumPCT
     mapping(uint256 => uint256) public policyPremiumPCT;
@@ -57,23 +56,23 @@ contract Policy is Ownable {
         uint256 indexed policyId, uint256 indexed blockNumber, address indexed currencyInsured, address currencyInsurer
     );
 
-    modifier onlySystemAddress() {
-        require(msg.sender == systemAddress, "Only system address");
-        _;
-    }
+    // modifier onlySystemAddress() {
+    //     require(msg.sender == systemAddress, "Only system address");
+    //     _;
+    // }
 
     modifier onlyOwnerOrOracleCommittee(uint256 _policyId) {
-        OracleCommittee o = policyOracleCommittee[_policyId];
-        require(
-            msg.sender == owner() || msg.sender == address(o), "Only system address or owner can call this function"
-        );
+        // OracleCommittee o = policyOracleCommittee[_policyId];
+        // require(
+        // msg.sender == owner() || msg.sender == address(o), "Only system address or owner can call this function"
+        // );
         _;
     }
 
-    constructor(address _systemAddress) {
-        systemAddress = msg.sender; //TODO Temporarily set here to make it onlyOwner equivalent in case anything checks for sysAddress
-            // systemAddress = _systemAddress;
-    }
+    // constructor(address _systemAddress) {
+    //     systemAddress = msg.sender; //TODO Temporarily set here to make it onlyOwner equivalent in case anything checks for sysAddress
+    //         // systemAddress = _systemAddress;
+    // }
 
     function createPolicy(
         uint256 blockNumber,
@@ -101,11 +100,17 @@ contract Policy is Ownable {
             string.concat("c", ERC20Helper.symbol(currencyInsurer), blockNumber.toString())
         );
 
-        policyOracleCommittee[policyCounter] = new OracleCommittee(
-            policyCounter,
-            address(this), _stringToBytes32(currencyInsuredSymbol), currencyInsured, blockNumber, 
-            blockNumber + blocksPerYear 
-        );
+        //Converst string symbol to bytes32
+        bytes32 currencySymbol;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            currencyInsuredSymbol := mload(add(currencyInsuredSymbol, 32))
+        }
+        // policyOracleCommittee[policyCounter] = new OracleCommittee(
+        //     policyCounter,
+        //     address(this), currencySymbol, currencyInsured, blockNumber,
+        //     blockNumber + blocksPerYear
+        // );
 
         policyId[blockNumber][currencyInsured][currencyInsurer] = policyCounter;
         policyPremiumPCT[policyCounter] = _policyPremiumPCT;
@@ -163,78 +168,32 @@ contract Policy is Ownable {
 
     // Subcribes to an upcoming policy as insured
     // TODO: frh -> add events, approve here and require blocknumber and TODOs from PR and deploy
-    function subscribeAsInsured(uint256 _policyId, uint256 amount) public {
-        address _currencyInsured = policyAsset[_policyId];
-        uint256 unit = 10 ** ERC20Helper.decimals(_currencyInsured);
+    function subscribeToPolicy(bool insured, uint256 _policyId, uint256 amount) public {
+        address _currencyInsuredOrInsurer = insured ? policyAsset[_policyId] : policyCollateral[_policyId];
+        uint256 unit = 10 ** ERC20Helper.decimals(_currencyInsuredOrInsurer);
         require(amount / unit >= subscribeMinimum, "Minimum not subcribed");
 
-        amountAsInsured[_policyId][msg.sender] = amount;
-        fifoInsured[_policyId].push(msg.sender);
-    }
-
-    // Subcribes to an upcoming policy as insurer
-    function subscribeAsInsurer(uint256 _policyId, uint256 amount) public {
-        address _currencyInsurer = policyCollateral[_policyId];
-        uint256 unit = 10 ** ERC20Helper.decimals(_currencyInsurer);
-        require(amount / unit >= subscribeMinimum, "Minimum not subcribed");
-
-        amountAsInsurer[_policyId][msg.sender] = amount;
-        fifoInsurer[_policyId].push(msg.sender);
-    }
-
-    // function activatePolicy(uint256 _policyId) public onlySystemAddress()  {
-    function activatePolicy(uint256 _policyId) public onlyOwner {
-        _getNextOne(_policyId);
+        if (insured) {
+            amountAsInsured[_policyId][msg.sender] = amount;
+            fifoInsured[_policyId].push(msg.sender);
+        } else {
+            amountAsInsurer[_policyId][msg.sender] = amount;
+            fifoInsurer[_policyId].push(msg.sender);
+        }
     }
 
     // Insured can withdraw whenever he want
-    function withdrawAsInsured(uint256 _policyId, uint256 amount) public {
-        _checkWithDrawerHasFunds(assetWrapper[_policyId], amount);
-
-        address _policyAsset = policyAsset[_policyId];
-
-        assetWrapper[_policyId].burn(msg.sender, amount);
-        ERC20Helper.safeTransfer(_policyAsset, msg.sender, amount);
-    }
-
-    // Insured can only withdraw after policy has ended
-    function withdrawAsInsurer(uint256 _policyId, uint256 amount) public {
+    function withdrawFromPolicy(bool insured, uint256 _policyId, uint256 amount) public {
         require(policyBlock[_policyId] + blocksPerYear < block.number, "Policy still active");
-        _checkWithDrawerHasFunds(collateralWrapper[_policyId], amount);
+        PolicyWrapper wrapper = insured ? assetWrapper[_policyId] : collateralWrapper[_policyId];
+        require(wrapper.balanceOf(msg.sender) >= amount, "Not enough balance");
+        address _policyToken = insured ? policyAsset[_policyId] : policyCollateral[_policyId];
 
-        address _policyCollateral = policyCollateral[_policyId];
-
-        collateralWrapper[_policyId].burn(msg.sender, amount);
-        ERC20Helper.safeTransfer(_policyCollateral, msg.sender, amount);
+        wrapper.burn(msg.sender, amount);
+        ERC20Helper.safeTransfer(_policyToken, msg.sender, amount);
     }
 
-    function addNewProviderToCommittee(
-        uint256 _policyId,
-        bytes32 _oracleType,
-        uint256 _depegTolerance,
-        uint8 _minBlocksToSwitchStatus,
-        uint8 _decimals,
-        bool _isOnChain
-    ) public onlyOwnerOrOracleCommittee(_policyId) returns (address) {
-        return policyOracleCommittee[_policyId].addNewProvider(
-            _oracleType, _depegTolerance, _minBlocksToSwitchStatus, _decimals, _isOnChain
-        );
-    }
-
-    function recordPriceForCommittee(uint256 _policyId, address _provider, uint256 _l1BlockNum, uint256 _price)
-        external
-        onlyOwnerOrOracleCommittee(_policyId)
-    {
-        // console.log("From policy, recording prices for %s", _provider);
-        try policyOracleCommittee[_policyId].recordPriceForProvider(_provider, _l1BlockNum, _price) {
-            // console.log("Successfully recorded price for %s", _provider);
-        } catch Error(string memory reason) {
-            // console.log("Recording price from committee failed, reason: %s", reason);
-            require(false, "caught error recording price for committee");
-        }
-    }
     // Check allowance and balance of subscriber, if insufficient go to next subscriber
-
     function _checkSubscription(address subscriber, uint256 amount, uint256 _policyId, bool isInsuredAddress)
         private
         returns (bool)
@@ -260,14 +219,14 @@ contract Policy is Ownable {
         return sufficient;
     }
 
-    function _getNextOne(uint256 _policyId) private {
+    function activatePolicy(uint256 _policyId) public onlyOwner {
         address insuredAddress = fifoInsured[_policyId][_insuredIndex[_policyId]];
         uint256 insuredAmount = amountAsInsured[_policyId][insuredAddress];
-        uint256 insuredAmountPlusPremium = _getInsuredAmountPlusPremium(_policyId, insuredAddress);
+        uint256 premium = insuredAmount * policyPremiumPCT[_policyId] / 100;
         address insurerAddress = fifoInsurer[_policyId][_insurerIndex[_policyId]];
         uint256 insurerAmount = amountAsInsurer[_policyId][insurerAddress];
 
-        bool canSubscribe = _checkSubscription(insuredAddress, insuredAmountPlusPremium, _policyId, true)
+        bool canSubscribe = _checkSubscription(insuredAddress, insuredAmount + premium, _policyId, true)
             && _checkSubscription(insurerAddress, insurerAmount, _policyId, false);
 
         // If insurer and insured amount are the same we can pass onto the next ones
@@ -313,27 +272,5 @@ contract Policy is Ownable {
 
         assetWrapper[_policyId].mint(insured, amount);
         collateralWrapper[_policyId].mint(insurer, amount);
-    }
-
-    function _checkWithDrawerHasFunds(PolicyWrapper policyWrapper, uint256 amount) private view {
-        uint256 balance = policyWrapper.balanceOf(msg.sender);
-        require(balance >= amount, "Not enough balance");
-    }
-
-    function _getInsuredAmountPlusPremium(uint256 _policyId, address _insured) private view returns (uint256) {
-        return _getPremium(_policyId, _insured) + amountAsInsured[_policyId][_insured];
-    }
-
-    function _getPremium(uint256 _policyId, address _insured) private view returns (uint256) {
-        return amountAsInsured[_policyId][_insured] * policyPremiumPCT[_policyId] / 100;
-    }
-
-    function _stringToBytes32(string memory _str) private pure returns (bytes32) {
-        bytes32 result;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            result := mload(add(_str, 32))
-        }
-        return result;
     }
 }

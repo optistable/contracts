@@ -10,7 +10,8 @@ contract DeployPolicy is Script {
     function run() public {
         vm.startBroadcast();
 
-        policy = new Policy(0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001);
+        // policy = new Policy(0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001);
+        policy = new Policy();
 
         vm.stopBroadcast();
     }

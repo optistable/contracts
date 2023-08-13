@@ -2,7 +2,7 @@
 pragma solidity =0.8.21;
 
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
-import {IPolicy} from "./interfaces/IPolicy.sol"; //TODO get an interface
+import {Policy} from "./Policy.sol"; //TODO get an interface
 import {IOracleCommittee} from "./interfaces/IOracleCommittee.sol";
 import {GenericDataProvider} from "./GenericDataProvider.sol";
 
@@ -21,7 +21,7 @@ contract OracleCommittee is IOracleCommittee, Ownable {
     bytes32 public symbol;
     //DataProvider => depegged
 
-    IPolicy public policy;
+    Policy public policy;
 
     enum ProviderStatus {
         NotRegistered,
@@ -29,14 +29,14 @@ contract OracleCommittee is IOracleCommittee, Ownable {
         RegisteredAndDepegged
     }
 
-    event OracleCommitteeCreated(
-        address indexed policyAddress,
-        bytes32 indexed symbol,
-        address indexed l1TokenAddress,
-        uint256 startingBlock,
-        uint256 endingBlock,
-        address systemAddress
-    );
+    // event OracleCommitteeCreated(
+    //     address indexed policyAddress,
+    //     bytes32 indexed symbol,
+    //     address indexed l1TokenAddress,
+    //     uint256 startingBlock,
+    //     uint256 endingBlock,
+    //     address systemAddress
+    // );
 
     mapping(address => ProviderStatus) public depeggedProviders;
     address[] public providers; // Used to return a list of providers to the OP Stack hack
@@ -63,13 +63,13 @@ contract OracleCommittee is IOracleCommittee, Ownable {
         // require(_providers.length >= 1, "You must specify one or more data providers for the committee");
 
         policyId = _policyId;
-        policy = IPolicy(_policy);
+        policy = Policy(_policy);
         symbol = _symbol;
         l1TokenAddress = _l1TokenAddress;
-        systemAddress = policy.getSystemAddress();
+        systemAddress = policy.systemAddress();
         startingBlock = _startingBlock;
         endingBlock = _endingBlock;
-        emit OracleCommitteeCreated(_policy, _symbol, _l1TokenAddress, _startingBlock, _endingBlock, systemAddress);
+        // emit OracleCommitteeCreated(_policy, _symbol, _l1TokenAddress, _startingBlock, _endingBlock, systemAddress);
         // Load providers into mapping
         // for (uint256 i = 0; i < _providers.length; i++) {
         //     require(

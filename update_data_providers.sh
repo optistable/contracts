@@ -1,13 +1,14 @@
 #!/bin/bash
-
 chainlink_data_feeds=("0x385c3849a65F9824E16969186f2B7A1ffaB80ADD" "0x4850971A47537F40F80a6DAfAeC6f81EF054eEFc" "0xC525c036d8d435622D940F31B618b307547752aC" "0xd4baCFe205a4Bc6bE6c1C5f736FD5f8e59126D96" "0x66528c190F9a75F1805bF9AB16C6504FD3304e2a")
 
-PRICE=$(forge script script/ChainlinkPriceFeedDemo.s.sol:Deploy --private-key $PRIVATE_KEY --broadcast --rpc-url $ETH_RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY | grep "PRICE:" | awk '{print $NF}')
+# PRICE=$(forge script script/ChainlinkPriceFeedDemo.s.sol:Deploy --private-key $PRIVATE_KEY --broadcast --rpc-url $ETH_RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY | grep "PRICE:" | awk '{print $NF}')
+PRICE=$(forge script script/ChainlinkPriceFeedDemo.s.sol:Deploy --private-key $PRIVATE_KEY --broadcast --rpc-url $ETH_RPC_URL | grep "PRICE:" | awk '{print $NF}')
 echo "Read price from chainlink: $PRICE"
 for address in "${chainlink_data_feeds[@]}"
 do 
   echo "Chainlink Data Feed: $address"
-    TARGET=$address PRICE=$PRICE forge script script/WriteToProvider.s.sol:WritePriceData --private-key $PRIVATE_KEY --broadcast --rpc-url $ETH_RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY -vv
+    # TARGET=$address PRICE=$PRICE forge script script/WriteToProvider.s.sol:WritePriceData --private-key $PRIVATE_KEY --broadcast --rpc-url $ETH_RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY -vv
+    TARGET=$address PRICE=$PRICE forge script script/WriteToProvider.s.sol:WritePriceData --private-key $PRIVATE_KEY --broadcast --rpc-url $ETH_RPC_URL -vv
 done
 
 
@@ -31,7 +32,8 @@ echo "Rounded price from redstone: $redstone_rounded_value"
 for address in "${redstone_data_feeds[@]}"
 do 
   echo "Redstone data feed: $address"
-  TARGET=$address PRICE=$redstone_rounded_value forge script script/WriteToProvider.s.sol:WritePriceData --private-key $PRIVATE_KEY --broadcast --rpc-url $ETH_RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY -vv
+#   TARGET=$address PRICE=$redstone_rounded_value forge script script/WriteToProvider.s.sol:WritePriceData --private-key $PRIVATE_KEY --broadcast --rpc-url $ETH_RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY -vv
+  TARGET=$address PRICE=$redstone_rounded_value forge script script/WriteToProvider.s.sol:WritePriceData --private-key $PRIVATE_KEY --broadcast --rpc-url $ETH_RPC_URL  -vv
 ß# done
 
 layer_zero_op_goerli=("0xAb09bA4f6E58920Bd8085eEf175E48cFd6aB7d8b" "0x17908de72A6B1db522edDB07Ea52ba5BA385b7D2" "0x9122F65886ef89E5eBE325c0Dd72940ACcE64fF6" "0x66b567603383C38a389d9AcEe73a701a0963333B" "0x68d039F984fe230A21814c9A85F06e191E7Fa25c" "0x06D7e357986B6e94adfC7cA005E1654F668658c2")
@@ -71,5 +73,6 @@ rounded_value=$(printf "%.0f" "$coingeck_usdt_uint")
 for address in "${coingecko[@]}"
 do 
   echo "CoinGecko data feed: $address"
-  TARGET=$address PRICE=$rounded_value forge script script/WriteToProvider.s.sol:WritePriceData --private-key $PRIVATE_KEY --broadcast --rpc-url $ETH_RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY -vv
+#   TARGET=$address PRICE=$rounded_value forge script script/WriteToProvider.s.sol:WritePriceData --private-key $PRIVATE_KEY --broadcast --rpc-url $ETH_RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY -vv
+  TARGET=$address PRICE=$rounded_value forge script script/WriteToProvider.s.sol:WritePriceData --private-key $PRIVATE_KEY --broadcast --rpc-url $ETH_RPC_URL -vv
 done

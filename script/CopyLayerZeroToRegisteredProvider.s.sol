@@ -19,34 +19,36 @@ contract WritePriceData is Script {
         vm.startBroadcast();
 
         address lzSource = vm.envAddress("LZ_SOURCE");
-        // address target = vm.envAddress("TARGET");
+        address target = vm.envAddress("TARGET");
         console.log("Getting data providers");
         LayerZeroPriceFetcher lzDataProvider = LayerZeroPriceFetcher(lzSource);
 
-        PolicyManager policyManager = new PolicyManager(0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001);
-        uint256 policyId = policyManager.createPolicy(block.number + 10, usdcAddress, usdtAddress, 5);
-        OracleCommittee committee = new OracleCommittee(
-            policyManager.policyAssetSymbolBytes32(policyId),
-            policyManager.policyAsset(policyId),
-            policyManager.policyBlock(policyId),
-            policyManager.policyBlock(policyId) + policyManager.blocksPerYear()
-        );
-        committee.setPolicy(address(policyManager), policyId);
+        // PolicyManager policyManager = new PolicyManager(0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001);
+        // uint256 policyId = policyManager.createPolicy(block.number + 10, usdcAddress, usdtAddress, 5);
+        // OracleCommittee committee = new OracleCommittee(
+        //     policyManager.policyAssetSymbolBytes32(policyId),
+        //     policyManager.policyAsset(policyId),
+        //     policyManager.policyBlock(policyId),
+        //     policyManager.policyBlock(policyId) + policyManager.blocksPerYear()
+        // );
+        // committee.setPolicy(address(policyManager), policyId);
 
-        console.log("Finished creating committee, assigning committee to policy");
-        policyManager.setOracleCommittee(policyId, address(committee));
-        address dpAddress = committee.addNewProvider(
-            bytes32("layer-zero-test"), //_oracleType
-            5, //_depegTolerance
-            5, //_minBlocksToSwitchStatus
-            8, //_decimals
-            true //_isOnChain);
-        );
-        GenericDataProvider dataProvider = GenericDataProvider(dpAddress);
-        console.log("Getting Pprice data");
+        // console.log("Finished creating committee, assigning committee to policy");
+        // policyManager.setOracleCommittee(policyId, address(committee));
+        // address dpAddress = committee.addNewProvider(
+        //     bytes32("layer-zero-test"), //_oracleType
+        //     5, //_depegTolerance
+        //     5, //_minBlocksToSwitchStatus
+        //     8, //_decimals
+        //     true //_isOnChain);
+        // );
+        // GenericDataProvider dataProvider = GenericDataProvider(dpAddress);
+        GenericDataProvider dataProvider = GenericDataProvider(target);
+        // console.log("Getting Pprice data");
+
         uint256 lastBlock = lzDataProvider.lastObservedBlockNumber();
         uint256 lastPrice = lzDataProvider.lastObservedPrice();
-        // OracleCommittee committee = OracleCommittee(dataProvider.getOracleCommittee());
+        OracleCommittee committee = OracleCommittee(dataProvider.getOracleCommittee());
         console.log("Writing to data provider %s", address(dataProvider));
         console.log("Committee: %s", dataProvider.getOracleCommittee());
         console.log("Block: %s", block.number);

@@ -116,7 +116,13 @@ contract GenericDataProvider is IDataProvider, Ownable {
         // require(_l1BlockNum > lastBlockNum, "have already recorded price for this block");
         // require(msg.sender == systemAddress, "only the system address can record a price");
 
-        bool currentlyDepegged = stableValue - _price >= depegTolerance;
+        uint256 currentDepeggedAmount;
+        if (_price > stableValue) {
+            currentDepeggedAmount = _price - stableValue;
+        } else {
+            currentDepeggedAmount = stableValue - _price;
+        }
+        bool currentlyDepegged = currentDepeggedAmount >= depegTolerance;
         if (currentlyDepegged) {
             //Token is depegged
             switchStatusCounter++;
@@ -130,10 +136,12 @@ contract GenericDataProvider is IDataProvider, Ownable {
             // This data provider will count as one of many sources of truth that this stablecoin is depegged
             committee.recordProviderAsDepegged();
         }
+
         //TODO Below are commented so we can record the demo
         lastBlockNum = block.number;
         lastObservation = _price;
         lastObservationDepegged = currentlyDepegged;
+        console.log("Emitting event");
         emit PriceRecorded(
             // address(committee), committee.getPolicyAddress(), symbol, _l1BlockNum, _price, currentlyDepegged
             address(committee),

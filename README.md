@@ -1,3 +1,9 @@
+Here is the link to the other repositories for the Superhack hackathon:
+
+Frontend: https://github.com/optistable/optistable-frontend
+Optimism rollup: https://github.com/optistable/optimism
+Optimism geth: https://github.com/optistable/op-geth
+
 ## Foundry
 
 

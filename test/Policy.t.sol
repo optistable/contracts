@@ -77,12 +77,14 @@ contract PolicyTest is Test {
         vm.expectEmit(true, true, true, true);
         emit PolicyCreated(0, block.number, stableInsured, stableInsurer);
         policy.createPolicy(block.number, stableInsured, stableInsurer, 5);
-        assertEq(policy.policyPremiumPCT(0), 5);
+
+        (uint256 premiumPCT, uint256 blockNumber, address asset, address collateral) = policy.policyMetadata(0);
+        assertEq(premiumPCT, 5);
         assertEq(policy.policyCounter(), 1);
         assertEq(policy.policyId(block.number, stableInsured, stableInsurer), 0);
-        assertEq(policy.policyBlock(0), block.number);
-        assertEq(policy.policyAsset(0), stableInsured);
-        assertEq(policy.policyCollateral(0), stableInsurer);
+        assertEq(blockNumber, block.number);
+        assertEq(asset, stableInsured);
+        assertEq(collateral, stableInsurer);
         assertEq(
             policy.assetWrapper(0).name(),
             string.concat("i", stableInsuredContract.name(), "-", vm.toString(block.number))
@@ -108,13 +110,12 @@ contract PolicyTest is Test {
         vm.roll(1000);
         vm.prank(owner);
         policy.depegEndPolicy(0);
+        (uint256 premiumPCT,,,) = policy.policyMetadata(0);
         for (uint256 i = 1; i < 11; i++) {
             if (uint256(i) % uint256(2) == uint256(0)) {
                 address insurer = address(uint160(uint256(keccak256(abi.encodePacked(i)))));
                 uint256 insurerQty = 25e18 + 1e18 * i;
-                assertEq(
-                    stableInsuredContract.balanceOf(insurer), insurerQty * policy.policyPremiumPCT(0) / 100 + insurerQty
-                );
+                assertEq(stableInsuredContract.balanceOf(insurer), insurerQty * premiumPCT / 100 + insurerQty);
             }
         }
     }

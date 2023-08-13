@@ -4,10 +4,10 @@ pragma solidity =0.8.21;
 import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {OracleCommittee} from "./OracleCommittee.sol";
-import "openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ERC20Helper} from "./libraries/ERC20Helper.sol";
 import {PolicyWrapper} from "./PolicyWrapper.sol";
-import "forge-std/console.sol";
+import "openzeppelin-contracts/contracts/utils/Strings.sol";
+// import "forge-std/console.sol";
 
 // solhint-disable-next-line max-states-count
 contract Policy is Ownable {
@@ -23,16 +23,19 @@ contract Policy is Ownable {
     // blocknumber => currencyInsured => currencyInsurer => policyId
     mapping(uint256 => mapping(address => mapping(address => uint256))) public policyId;
     // policyId => OracleCommittee
+
+    struct PolicyMetadata {
+        uint256 premiumPCT; // replaces mapping(uint256 => uint256) public policyPremiumPCT
+        uint256 blockNumber; //replaces mapping(uint256 => uint256) public policyBlock;
+        //insured stablecoin
+        address asset; //replaces mapping(uint256 => address) public policyAsset;
+        //collateral stablecoin
+        address collateral; //replaces mapping(uint256 => address) public policyCollateral;
+    }
+
     mapping(uint256 => OracleCommittee) public policyOracleCommittee;
 
-    // policyId => policyPremiumPCT
-    mapping(uint256 => uint256) public policyPremiumPCT;
-    // policyId => blocknumber
-    mapping(uint256 => uint256) public policyBlock;
-    // policyId => currencyInsured
-    mapping(uint256 => address) public policyAsset;
-    // policyId => currencyInsurer
-    mapping(uint256 => address) public policyCollateral;
+    mapping(uint256 => PolicyMetadata) public policyMetadata;
     // policyId => assetWrapper
     mapping(uint256 => PolicyWrapper) public assetWrapper;
     // policyId => collateralWrapper
@@ -86,17 +89,19 @@ contract Policy is Ownable {
             uint256
         )
     {
-        string memory currencyInsuredName = ERC20Helper.name(currencyInsured);
         string memory currencyInsuredSymbol = ERC20Helper.symbol(currencyInsured);
-        string memory currencyInsurerName = ERC20Helper.name(currencyInsurer);
-        string memory currencyInsurerSymbol = ERC20Helper.symbol(currencyInsurer);
-
         assetWrapper[policyCounter] = new PolicyWrapper();
-        assetWrapper[policyCounter].setName(string.concat("i", currencyInsuredName, "-", blockNumber.toString()));
+        assetWrapper[policyCounter].setName(
+            string.concat("i", ERC20Helper.name(currencyInsured), "-", blockNumber.toString())
+        );
         assetWrapper[policyCounter].setSymbol(string.concat("i", currencyInsuredSymbol, blockNumber.toString()));
         collateralWrapper[policyCounter] = new PolicyWrapper();
-        collateralWrapper[policyCounter].setName(string.concat("c", currencyInsurerName, "-", blockNumber.toString()));
-        collateralWrapper[policyCounter].setSymbol(string.concat("c", currencyInsurerSymbol, blockNumber.toString()));
+        collateralWrapper[policyCounter].setName(
+            string.concat("c", ERC20Helper.name(currencyInsurer), "-", blockNumber.toString())
+        );
+        collateralWrapper[policyCounter].setSymbol(
+            string.concat("c", ERC20Helper.symbol(currencyInsurer), blockNumber.toString())
+        );
 
         policyOracleCommittee[policyCounter] = new OracleCommittee(
             policyCounter,
@@ -105,10 +110,7 @@ contract Policy is Ownable {
         );
 
         policyId[blockNumber][currencyInsured][currencyInsurer] = policyCounter;
-        policyPremiumPCT[policyCounter] = _policyPremiumPCT;
-        policyBlock[policyCounter] = blockNumber;
-        policyAsset[policyCounter] = currencyInsured;
-        policyCollateral[policyCounter] = currencyInsurer;
+        policyMetadata[policyCounter] = PolicyMetadata(_policyPremiumPCT, blockNumber, currencyInsured, currencyInsurer);
         policyCounter++;
 
         emit PolicyCreated(policyCounter - 1, blockNumber, currencyInsured, currencyInsurer);
@@ -118,8 +120,8 @@ contract Policy is Ownable {
     // Depeg occurs, policy executes and ends
     // function depegEndPolicy(uint256 _policyId) public onlySystemAddress {
     function depegEndPolicy(uint256 _policyId) public onlyOwnerOrOracleCommittee(_policyId) {
-        address _policyAsset = policyAsset[_policyId];
-        address _policyCollateral = policyCollateral[_policyId];
+        address _policyAsset = policyMetadata[_policyId].asset;
+        address _policyCollateral = policyMetadata[_policyId].collateral;
         PolicyWrapper _assetWrapper = assetWrapper[_policyId];
         PolicyWrapper _collateralWrapper = collateralWrapper[_policyId];
 
@@ -158,14 +160,10 @@ contract Policy is Ownable {
         }
     }
 
-    function getSystemAddress() public view returns (address) {
-        return systemAddress;
-    }
-
     // Subcribes to an upcoming policy as insured
     // TODO: frh -> add events, approve here and require blocknumber and TODOs from PR and deploy
     function subscribeAsInsured(uint256 _policyId, uint256 amount) public {
-        address _currencyInsured = policyAsset[_policyId];
+        address _currencyInsured = policyMetadata[_policyId].asset;
         uint256 unit = 10 ** ERC20Helper.decimals(_currencyInsured);
         require(amount / unit >= subscribeMinimum, "Minimum not subcribed");
 
@@ -175,7 +173,7 @@ contract Policy is Ownable {
 
     // Subcribes to an upcoming policy as insurer
     function subscribeAsInsurer(uint256 _policyId, uint256 amount) public {
-        address _currencyInsurer = policyCollateral[_policyId];
+        address _currencyInsurer = policyMetadata[_policyId].collateral;
         uint256 unit = 10 ** ERC20Helper.decimals(_currencyInsurer);
         require(amount / unit >= subscribeMinimum, "Minimum not subcribed");
 
@@ -192,7 +190,7 @@ contract Policy is Ownable {
     function withdrawAsInsured(uint256 _policyId, uint256 amount) public {
         _checkWithDrawerHasFunds(assetWrapper[_policyId], amount);
 
-        address _policyAsset = policyAsset[_policyId];
+        address _policyAsset = policyMetadata[_policyId].asset;
 
         assetWrapper[_policyId].burn(msg.sender, amount);
         ERC20Helper.safeTransfer(_policyAsset, msg.sender, amount);
@@ -200,10 +198,10 @@ contract Policy is Ownable {
 
     // Insured can only withdraw after policy has ended
     function withdrawAsInsurer(uint256 _policyId, uint256 amount) public {
-        require(policyBlock[_policyId] + blocksPerYear < block.number, "Policy still active");
+        require(policyMetadata[_policyId].blockNumber + blocksPerYear < block.number, "Policy still active");
         _checkWithDrawerHasFunds(collateralWrapper[_policyId], amount);
 
-        address _policyCollateral = policyCollateral[_policyId];
+        address _policyCollateral = policyMetadata[_policyId].collateral;
 
         collateralWrapper[_policyId].burn(msg.sender, amount);
         ERC20Helper.safeTransfer(_policyCollateral, msg.sender, amount);
@@ -226,11 +224,11 @@ contract Policy is Ownable {
         external
         onlyOwnerOrOracleCommittee(_policyId)
     {
-        console.log("From policy, recording prices for %s", _provider);
+        // console.log("From policy, recording prices for %s", _provider);
         try policyOracleCommittee[_policyId].recordPriceForProvider(_provider, _l1BlockNum, _price) {
-            console.log("Successfully recorded price for %s", _provider);
+            // console.log("Successfully recorded price for %s", _provider);
         } catch Error(string memory reason) {
-            console.log("Recording price from committee failed, reason: %s", reason);
+            // console.log("Recording price from committee failed, reason: %s", reason);
             require(false, "caught error recording price for committee");
         }
     }
@@ -241,7 +239,7 @@ contract Policy is Ownable {
         returns (bool)
     {
         bool sufficient = false;
-        address currency = isInsuredAddress ? policyAsset[_policyId] : policyCollateral[_policyId];
+        address currency = isInsuredAddress ? policyMetadata[_policyId].asset : policyMetadata[_policyId].collateral;
 
         uint256 allowance = ERC20Helper.allowance(currency, subscriber);
         if (allowance < amount) {
@@ -263,10 +261,10 @@ contract Policy is Ownable {
 
     function _getNextOne(uint256 _policyId) private {
         address insuredAddress = fifoInsured[_policyId][_insuredIndex[_policyId]];
-        uint256 insuredAmount = _getInsuredAmount(_policyId, insuredAddress);
+        uint256 insuredAmount = amountAsInsured[_policyId][insuredAddress];
         uint256 insuredAmountPlusPremium = _getInsuredAmountPlusPremium(_policyId, insuredAddress);
         address insurerAddress = fifoInsurer[_policyId][_insurerIndex[_policyId]];
-        uint256 insurerAmount = _getInsurerAmount(_policyId, insurerAddress);
+        uint256 insurerAmount = amountAsInsurer[_policyId][insurerAddress];
 
         bool canSubscribe = _checkSubscription(insuredAddress, insuredAmountPlusPremium, _policyId, true)
             && _checkSubscription(insurerAddress, insurerAmount, _policyId, false);
@@ -299,18 +297,17 @@ contract Policy is Ownable {
     }
 
     function _matchSubscribers(address insured, address insurer, uint256 amount, uint256 _policyId) private {
-        address _currencyAsset = policyAsset[_policyId];
-        address _currencyCollateral = policyCollateral[_policyId];
-        uint256 premium = amount * policyPremiumPCT[_policyId] / 100;
+        PolicyMetadata memory metadata = policyMetadata[_policyId];
+        uint256 premium = amount * metadata.premiumPCT / 100;
 
         require(amountAsInsured[_policyId][insured] >= amount, "Amount over subscription");
         require(amountAsInsurer[_policyId][insurer] >= amount, "Amount over subscription");
         amountAsInsured[_policyId][insured] = amountAsInsured[_policyId][insured] - amount;
         amountAsInsurer[_policyId][insurer] = amountAsInsurer[_policyId][insurer] - amount;
 
-        ERC20Helper.safeTransferFrom(_currencyAsset, insured, address(this), amount);
-        ERC20Helper.safeTransferFrom(_currencyAsset, insured, insurer, premium);
-        ERC20Helper.safeTransferFrom(_currencyCollateral, insurer, address(this), amount);
+        ERC20Helper.safeTransferFrom(metadata.asset, insured, address(this), amount);
+        ERC20Helper.safeTransferFrom(metadata.asset, insured, insurer, premium);
+        ERC20Helper.safeTransferFrom(metadata.collateral, insurer, address(this), amount);
 
         assetWrapper[_policyId].mint(insured, amount);
         collateralWrapper[_policyId].mint(insurer, amount);
@@ -321,20 +318,12 @@ contract Policy is Ownable {
         require(balance >= amount, "Not enough balance");
     }
 
-    function _getInsuredAmount(uint256 _policyId, address _insured) private view returns (uint256) {
-        return amountAsInsured[_policyId][_insured];
-    }
-
     function _getInsuredAmountPlusPremium(uint256 _policyId, address _insured) private view returns (uint256) {
         return _getPremium(_policyId, _insured) + amountAsInsured[_policyId][_insured];
     }
 
-    function _getInsurerAmount(uint256 _policyId, address _insurer) private view returns (uint256) {
-        return amountAsInsurer[_policyId][_insurer];
-    }
-
     function _getPremium(uint256 _policyId, address _insured) private view returns (uint256) {
-        return amountAsInsured[_policyId][_insured] * policyPremiumPCT[_policyId] / 100;
+        return amountAsInsured[_policyId][_insured] * policyMetadata[_policyId].premiumPCT / 100;
     }
 
     function _stringToBytes32(string memory _str) private pure returns (bytes32) {

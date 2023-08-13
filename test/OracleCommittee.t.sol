@@ -72,13 +72,9 @@ contract PolicyTest is Test {
         );
         assertEq(committee.minProvidersForQuorum(), 2);
 
-        address[] memory providers = committee.getProviders();
-        for (uint256 i = 0; i < providers.length; i++) {
-            console.log("provider: %s", providers[i]);
-        }
-        GenericDataProvider provider1 = GenericDataProvider(providers[0]);
-        GenericDataProvider provider2 = GenericDataProvider(providers[1]);
-        GenericDataProvider provider3 = GenericDataProvider(providers[2]);
+        GenericDataProvider provider1 = GenericDataProvider(committee.providers(0));
+        GenericDataProvider provider2 = GenericDataProvider(committee.providers(1));
+        GenericDataProvider provider3 = GenericDataProvider(committee.providers(2));
         uint256 depegPrice = provider1.stableValue() - provider1.depegTolerance();
         console.log("depegPrice: %s", depegPrice);
         console.log("stableValue: %s", provider1.stableValue());

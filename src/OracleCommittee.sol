@@ -10,7 +10,7 @@ import "forge-std/console.sol";
 
 // OracleCommittee sets up a series of data providers.
 // When a majority of data providers report themselves as depegged, then it will report the policy as claimable
-contract OracleCommittee is Ownable {
+contract OracleCommittee is IOracleCommittee, Ownable {
     uint256 public startingBlock;
     uint256 public endingBlock;
     uint256 public minProvidersForQuorum;
@@ -21,7 +21,7 @@ contract OracleCommittee is Ownable {
     bytes32 public symbol;
     //DataProvider => depegged
 
-    IPolicy policy;
+    IPolicy public policy;
 
     enum ProviderStatus {
         NotRegistered,
@@ -38,8 +38,8 @@ contract OracleCommittee is Ownable {
         address systemAddress
     );
 
-    mapping(address => ProviderStatus) depeggedProviders;
-    address[] providers; // Used to return a list of providers to the OP Stack hack
+    mapping(address => ProviderStatus) public depeggedProviders;
+    address[] public providers; // Used to return a list of providers to the OP Stack hack
 
     modifier onlyOwnerOrPolicy() {
         require(msg.sender == owner() || msg.sender == address(policy), "Only owner or policy can call this function");
@@ -96,14 +96,6 @@ contract OracleCommittee is Ownable {
         }
     }
 
-    function getStartingBlock() public view returns (uint256) {
-        return startingBlock;
-    }
-
-    function getEndingBlock() public view returns (uint256) {
-        return endingBlock;
-    }
-
     function isDepegged() external view returns (bool) {
         if (block.number < startingBlock) {
             console.log("starting block is less than block number, committee hasn't started");
@@ -121,8 +113,8 @@ contract OracleCommittee is Ownable {
         return this.isDepegged() || block.number > endingBlock;
     }
 
-    function getProviders() external view returns (address[] memory) {
-        return providers;
+    function getEndingBlock() external view returns (uint256) {
+        return endingBlock;
     }
 
     function getPolicyAddress() external view returns (address) {
@@ -142,16 +134,16 @@ contract OracleCommittee is Ownable {
         provider.recordPrice(_l1BlockNum, _price);
     }
 
-    function addExistingProvider(address _provider) external onlyOwnerOrPolicy {
-        require(block.number < startingBlock, "Committee has already started"); // TODO Is the starting block L1 or L2?
-        require(!this.isClosed(), "Committee is closed");
-        // require(msg.sender == systemAddress, "Only the system can add providers");
-        require(depeggedProviders[_provider] == ProviderStatus.NotRegistered, "Provider already registered");
-        GenericDataProvider iProvider = GenericDataProvider(_provider);
-        require(iProvider.getOracleCommittee() == address(0), "provider already registered with another committee");
-        depeggedProviders[_provider] = ProviderStatus.RegisteredButNotDepegged;
-        providers.push(_provider);
-    }
+    // function addExistingProvider(address _provider) external onlyOwnerOrPolicy {
+    //     require(block.number < startingBlock, "Committee has already started"); // TODO Is the starting block L1 or L2?
+    //     require(!this.isClosed(), "Committee is closed");
+    //     // require(msg.sender == systemAddress, "Only the system can add providers");
+    //     require(depeggedProviders[_provider] == ProviderStatus.NotRegistered, "Provider already registered");
+    //     GenericDataProvider iProvider = GenericDataProvider(_provider);
+    //     require(iProvider.getOracleCommittee() == address(0), "provider already registered with another committee");
+    //     depeggedProviders[_provider] = ProviderStatus.RegisteredButNotDepegged;
+    //     providers.push(_provider);
+    // }
 
     // Shortcut, makes it easier to start an oracle committee from scratch
     function addNewProvider(

@@ -15,6 +15,8 @@ contract Deploy is Script {
         vm.startBroadcast();
         address policyAddress = vm.envAddress("POLICY_ADDRESS");
         Policy policy = Policy(policyAddress);
+
+        console.log("Creating policy");
         uint256 policyId = policy.createPolicy(
             //Addresses are optistable usdc and optistable usdt
             block.number,
@@ -22,6 +24,8 @@ contract Deploy is Script {
             0xC3c8f830DedF94D185250bA5ac348aC1455a0520,
             5
         );
+        console.log("Policy ID: %s", policyId);
+        console.log("Oracle committee address: ", address(policy.policyOracleCommittee(policyId)));
 
         policy.addNewProviderToCommittee(
             policyId,
